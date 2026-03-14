@@ -251,3 +251,44 @@ async function loadReceiptsTable() {
     });
 }
 window.onload = loadReceiptsTable;
+// Updated Add Product Row Logic
+function addProductRow() {
+    const tbody = document.getElementById('productList');
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td><input type="text" placeholder="Enter product" required></td>
+        <td><input type="number" min="1" placeholder="0" required></td>
+        <td>
+            <select required>
+                <option value="" disabled selected>Select Category...</option>
+                <option value="Tech & Electronics">Tech & Electronics</option>
+                <option value="Raw Materials">Raw Materials</option>
+                <option value="Office Supplies">Office Supplies</option>
+            </select>
+        </td>
+        <td class="no-print"><button type="button" class="btn-icon" onclick="removeProductRow(this)">🗑️</button></td>
+    `;
+    tbody.appendChild(row);
+}
+
+// ... (Keep the rest of your saveReceipt logic at the top the same) ...
+
+    // INSIDE your saveReceipt(event) function, update the reset block at the very end:
+    document.getElementById('productList').innerHTML = `
+        <tr>
+            <td><input type="text" placeholder="Enter product" required></td>
+            <td><input type="number" min="1" placeholder="0" required></td>
+            <td>
+                <select required>
+                    <option value="" disabled selected>Select Category...</option>
+                    <option value="Tech & Electronics">Tech & Electronics</option>
+                    <option value="Raw Materials">Raw Materials</option>
+                    <option value="Office Supplies">Office Supplies</option>
+                </select>
+            </td>
+            <td class="no-print"><button type="button" class="btn-icon" disabled>🗑️</button></td>
+        </tr>
+    `;
+    
+    closeModal();
+// } <-- End of saveReceipt function
