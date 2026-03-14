@@ -70,64 +70,7 @@
         </main>
     </div>
 
-    <script>
-        // Sidebar logic
-        document.getElementById('operations-toggle').addEventListener('click', function() {
-            const submenu = document.getElementById('operations-submenu');
-            const arrow = this.querySelector('.arrow');
-            submenu.classList.toggle('show');
-            arrow.style.transform = submenu.classList.contains('show') ? 'rotate(180deg)' : 'rotate(0deg)';
-        });
-
-        /* --- MOCK DATABASE FOR MOVE HISTORY --- 
-           Type codes: 'IN' (Receipt), 'OUT' (Delivery), 'MOVE' (Transfer)
-        */
-        const historyDB = [
-            { id: 1, type: 'IN', receiptRef: 'WH/IN/1042', deliveryRef: null, transferRef: null, item: 'Industrial Screws (Pack)', date: '2026-03-14' },
-            { id: 2, type: 'OUT', receiptRef: null, deliveryRef: 'WH/OUT/4092', transferRef: null, item: 'Safety Helmets', date: '2026-03-13' },
-            { id: 3, type: 'MOVE', receiptRef: null, deliveryRef: null, transferRef: 'WH/TR/8821', item: 'Hydraulic Pump', date: '2026-03-12' },
-            { id: 4, type: 'IN', receiptRef: 'WH/IN/1043', deliveryRef: null, transferRef: null, item: 'Printer Ink Cartridge', date: '2026-03-10' },
-            { id: 5, type: 'OUT', receiptRef: null, deliveryRef: 'WH/OUT/4093', transferRef: null, item: 'Industrial Screws (Pack)', date: '2026-03-09' }
-        ];
-
-        function renderHistoryTable() {
-            const tbody = document.getElementById('historyTableBody');
-            tbody.innerHTML = ''; 
-
-            // Dash character for empty columns
-            const dash = '<span class="empty-dash">—</span>';
-
-            historyDB.forEach((record, index) => {
-                let arrowHTML = '';
-                
-                // Determine arrow icon and glowing color based on the type of movement
-                if (record.type === 'IN') {
-                    // Green Down Arrow for Receiving
-                    arrowHTML = '<span class="arrow-icon neon-green">⬇</span>';
-                } else if (record.type === 'OUT') {
-                    // Red Up Arrow for Delivery
-                    arrowHTML = '<span class="arrow-icon neon-red">⬆</span>';
-                } else if (record.type === 'MOVE') {
-                    // Yellow Left-Right Arrow for Internal Transfer
-                    arrowHTML = '<span class="arrow-icon neon-orange">⇄</span>';
-                }
-
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td style="color: #8b92a5;">${index + 1}</td>
-                    <td class="text-center">${arrowHTML}</td>
-                    <td style="font-family: monospace;">${record.receiptRef || dash}</td>
-                    <td style="font-family: monospace;">${record.deliveryRef || dash}</td>
-                    <td style="font-family: monospace;">${record.transferRef || dash}</td>
-                    <td style="font-weight: 600; color: #fff;">${record.item}</td>
-                    <td>${record.date}</td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
-
-        // Run on load
-        renderHistoryTable();
+    <script src="js/move-history.js">
     </script>
 </body>
 </html>
