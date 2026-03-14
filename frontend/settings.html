@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - InventoryPro</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo">INVENTORY<span class="logo-accent">PRO</span></div>
+            <nav class="nav-menu">
+                <a href="index.html" class="nav-item">Dashboard</a>
+                
+                <div class="nav-item-group">
+                    <div class="nav-item" id="operations-toggle">
+                        Operations <span class="arrow">▼</span>
+                    </div>
+                    <div class="sub-menu" id="operations-submenu">
+                        <a href="receipts.html" class="sub-nav-item">Receipts</a>
+                        <a href="delivery.html" class="sub-nav-item">Delivery</a>
+                        <a href="adjustment.html" class="sub-nav-item">Adjustment</a>
+                    </div>
+                </div>
+
+                <a href="product.html" class="nav-item">Product</a>
+                <a href="move-history.html" class="nav-item">Move History</a>
+                <a href="settings.html" class="nav-item active">Settings</a>
+            </nav>
+
+            <a href="profile.html" class="user-profile">
+                <img src="https://ui-avatars.com/api/?name=Admin+User&background=45a29e&color=fff" alt="Profile Picture" class="profile-pic">
+                <div class="profile-info">
+                    <span class="profile-name">Admin User</span>
+                    <span class="profile-role">Manager</span>
+                </div>
+            </a>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-header page-header">
+                <h1>Warehouse Management</h1>
+                <button class="btn btn-primary" onclick="openAddModal()">+ Add Warehouse</button>
+            </header>
+
+            <div class="card table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Warehouse Name</th>
+                            <th>Address</th>
+                            <th>Capacity</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="warehouseTableBody">
+                        </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <div id="addWarehouseModal" class="modal-overlay">
+        <div class="modal-content card" style="max-width: 500px;">
+            <header class="modal-header">
+                <h2>Add New Warehouse</h2>
+                <button class="close-btn" onclick="closeModal('addWarehouseModal')">&times;</button>
+            </header>
+            <form id="addWarehouseForm" onsubmit="saveNewWarehouse(event)">
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Warehouse Name</label>
+                    <input type="text" id="addName" placeholder="e.g. Zone C Storage" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Warehouse Address</label>
+                    <input type="text" id="addAddress" placeholder="Full physical address" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>Capacity (Units/Sq Ft)</label>
+                    <input type="text" id="addCapacity" placeholder="e.g. 15,000 sq ft" required>
+                </div>
+                <footer class="modal-footer">
+                    <button type="button" class="btn btn-text" onclick="closeModal('addWarehouseModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Warehouse</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+
+    <div id="editWarehouseModal" class="modal-overlay">
+        <div class="modal-content card" style="max-width: 500px;">
+            <header class="modal-header">
+                <h2>Edit Warehouse</h2>
+                <button class="close-btn" onclick="closeModal('editWarehouseModal')">&times;</button>
+            </header>
+            <form id="editWarehouseForm" onsubmit="saveEditWarehouse(event)">
+                <input type="hidden" id="editId">
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Warehouse Name</label>
+                    <input type="text" id="editName" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Warehouse Address (Read-Only)</label>
+                    <input type="text" id="editAddress" class="input-readonly" readonly>
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>Capacity</label>
+                    <input type="text" id="editCapacity" required>
+                </div>
+                <footer class="modal-footer">
+                    <button type="button" class="btn btn-text" onclick="closeModal('editWarehouseModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Details</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="modal-overlay">
+        <div class="modal-content card" style="max-width: 450px; text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 10px;">⚠️</div>
+            <h2 style="color: #ff4757; margin-bottom: 15px;">Clear Warehouse Data?</h2>
+            <p style="color: #c5c6c7; margin-bottom: 25px; line-height: 1.5;">
+                Are you absolutely sure you want to remove all data for <strong id="deleteTargetName" class="neon-red"></strong>? 
+                <br><br>This action cannot be undone and will wipe all stock logs associated with this location.
+            </p>
+            <input type="hidden" id="deleteId">
+            <div style="display: flex; justify-content: center; gap: 15px;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('deleteModal')">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDelete()">Yes, Delete Everything</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sidebar logic
+        document.getElementById('operations-toggle').addEventListener('click', function() {
+            const submenu = document.getElementById('operations-submenu');
+            const arrow = this.querySelector('.arrow');
+            submenu.classList.toggle('show');
+            arrow.style.transform = submenu.classList.contains('show') ? 'rotate(180deg)' : 'rotate(0deg)';
+        });
+
+        // Mock DB for Warehouses
+        let warehousesDB = [
+            { id: 1, name: "Main Warehouse", address: "123 Industrial Pkwy, Sector 4", capacity: "50,000 sq ft" },
+            { id: 2, name: "Zone B Storage", address: "88 Commerce Blvd, East Wing", capacity: "12,000 sq ft" },
+            { id: 3, name: "Storefront Retail", address: "404 Downtown Ave", capacity: "2,500 sq ft" }
+        ];
+
+        function renderWarehouses() {
+            const tbody = document.getElementById('warehouseTableBody');
+            tbody.innerHTML = ''; 
+
+            warehousesDB.forEach(wh => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td style="font-weight: 600; color: #fff;">${wh.name}</td>
+                    <td style="color: #8b92a5;">${wh.address}</td>
+                    <td>${wh.capacity}</td>
+                    <td style="text-align: center;">
+                        <button class="btn-icon" style="color: #45a29e;" onclick="openEditModal(${wh.id})" title="Edit">✏️</button>
+                        <button class="btn-icon" style="color: #ff4757; margin-left: 10px;" onclick="openDeleteModal(${wh.id}, '${wh.name}')" title="Clear Data">🗑️</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // --- MODAL CONTROLS ---
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // Add Logic
+        function openAddModal() {
+            document.getElementById('addWarehouseForm').reset();
+            document.getElementById('addWarehouseModal').classList.add('active');
+        }
+
+        function saveNewWarehouse(event) {
+            event.preventDefault();
+            const newId = warehousesDB.length ? warehousesDB[warehousesDB.length - 1].id + 1 : 1;
+            warehousesDB.push({
+                id: newId,
+                name: document.getElementById('addName').value,
+                address: document.getElementById('addAddress').value,
+                capacity: document.getElementById('addCapacity').value
+            });
+            renderWarehouses();
+            closeModal('addWarehouseModal');
+        }
+
+        // Edit Logic
+        function openEditModal(id) {
+            const wh = warehousesDB.find(w => w.id === id);
+            if (wh) {
+                document.getElementById('editId').value = wh.id;
+                document.getElementById('editName').value = wh.name;
+                document.getElementById('editAddress').value = wh.address; // Read-only
+                document.getElementById('editCapacity').value = wh.capacity;
+                document.getElementById('editWarehouseModal').classList.add('active');
+            }
+        }
+
+        function saveEditWarehouse(event) {
+            event.preventDefault();
+            const id = parseInt(document.getElementById('editId').value);
+            const whIndex = warehousesDB.findIndex(w => w.id === id);
+            
+            if (whIndex !== -1) {
+                warehousesDB[whIndex].name = document.getElementById('editName').value;
+                // Address is not updated intentionally
+                warehousesDB[whIndex].capacity = document.getElementById('editCapacity').value;
+                renderWarehouses();
+                closeModal('editWarehouseModal');
+            }
+        }
+
+        // Delete/Clear Logic
+        function openDeleteModal(id, name) {
+            document.getElementById('deleteId').value = id;
+            document.getElementById('deleteTargetName').innerText = name;
+            document.getElementById('deleteModal').classList.add('active');
+        }
+
+        function confirmDelete() {
+            const id = parseInt(document.getElementById('deleteId').value);
+            // Simulating deleting the data by removing it from the array
+            warehousesDB = warehousesDB.filter(w => w.id !== id);
+            renderWarehouses();
+            closeModal('deleteModal');
+        }
+
+        // Run on load
+        renderWarehouses();
+    </script>
+</body>
+</html>
