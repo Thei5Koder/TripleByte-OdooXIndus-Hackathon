@@ -40,12 +40,12 @@
                 <h2>Receipts</h2>
                 <div class="stats-grid">
                     <div class="stat-item">
-                        <span class="stat-value neon-red">12</span>
+                        <span id="receipts-late" class="stat-value neon-red">12</span>
                         <span class="stat-label">Late</span>
                     </div>
 
                     <div class="stat-item">
-                        <span class="stat-value neon-blue">45</span>
+                        <span id="receipts-ops" class="stat-value neon-blue">45</span>
                         <span class="stat-label">In Operations</span>
                     </div>
                     <!-- <div class="stat-item">
@@ -59,15 +59,15 @@
                     <h2>Deliveries</h2>
                     <div class="stats-grid">
                         <div class="stat-item">
-                            <span class="stat-value neon-orange">34</span>
+                            <span id="deliveries-rem" class="stat-value neon-orange">34</span>
                             <span class="stat-label">Remaining</span>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-value neon-blue">22</span>
+                            <span id="deliveries-ops" class="stat-value neon-blue">22</span>
                             <span class="stat-label">In Operations</span>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-value neon-red">5</span>
+                            <span id="deliveries-late" class="stat-value neon-red">5</span>
                             <span class="stat-label">Late</span>
                         </div>
                     </div>
@@ -92,5 +92,6 @@
             }
         });
     </script>
+    <script src="js/api.js"></script>
 </body>
 </html>
