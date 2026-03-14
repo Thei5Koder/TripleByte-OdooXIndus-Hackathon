@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -6,41 +7,64 @@
   <title>Login</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
 
-  <div class="login-box">
-    <h1 class="login-title">Login</h1>
+<div class="dashboard-container">
 
-    <input class="input-field" type="text" id="username" placeholder="Username">
-    <input class="input-field" type="password" id="password" placeholder="Password">
+  <div class="main-content" style="justify-content:center; align-items:center;">
 
-    <button class="btn btn-primary" onclick="login()">Sign In</button>
-    
-    <p class="msg" id="msg"></p>
-    <a href="#" class="forgot-link">Forgot Password?</a>
+```
+<div class="card clickable-card" style="max-width:400px; width:100%;">
+
+  <h2 class="neon-blue">Login</h2>
+
+  <div class="form-group">
+    <label>Username</label>
+    <input type="text" id="username" placeholder="Enter username">
   </div>
 
-  <script>
-    function login() {
-      const user = document.getElementById('username').value;
-      const pass = document.getElementById('password').value;
-      const msg = document.getElementById('msg');
+  <div class="form-group">
+    <label>Password</label>
+    <input type="password" id="password" placeholder="Enter password">
+  </div>
 
-      if (!user || !pass) {
-        msg.textContent = "Please fill in both fields!";
-        msg.className = "msg error-msg";
-        return;
-      }
+  <button class="btn btn-primary" style="width:100%; margin-top:15px;" onclick="login()">Sign In</button>
 
-      if(user === "hackathon" && pass === "1234") {
-        msg.textContent = "Login successful! 🚀";
-        msg.className = "msg success-msg";
-      } else {
-        msg.textContent = "Wrong credentials, try again.";
-        msg.className = "msg error-msg";
-      }
-    }
-  </script>
+  <p class="msg" id="msg"></p>
+
+    <div style="margin-top:12px;">
+  <a href="#" class="btn btn-text">Forgot Password?</a>
+</div>
+
+</div>
+```
+
+  </div>
+
+</div>
+
+<script>
+function login() {
+  const user = document.getElementById('username').value;
+  const pass = document.getElementById('password').value;
+  const msg = document.getElementById('msg');
+
+  if (!user || !pass) {
+    msg.textContent = "Please fill in both fields!";
+    msg.className = "msg error-msg";
+    return;
+  }
+
+  if(user === "hackathon" && pass === "1234") {
+    msg.textContent = "Login successful! 🚀";
+    msg.className = "msg success-msg";
+  } else {
+    msg.textContent = "Wrong credentials, try again.";
+    msg.className = "msg error-msg";
+  }
+}
+</script>
 
 </body>
 </html>
