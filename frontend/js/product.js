@@ -1,3 +1,4 @@
+ 
  let allProductsData = [];
  document.getElementById('operations-toggle').addEventListener('click', function() {
             const submenu = document.getElementById('operations-submenu');
@@ -39,20 +40,18 @@
         ];
 
 
-
 async function loadInventory() {
     try {
-        const response = await fetch('http://127.0.0.1:5000/api/product-inventory');
+        const response = await secureFetch('http://127.0.0.1:5000/api/product-inventory');
         if (!response.ok) throw new Error("Backend unreachable");
         
-        allProductsData = await response.json(); // Save to the global variable
-        renderTable(); // Call renderTable without passing data directly
+        allProductsData = await response.json(); 
+        renderTable(); 
     } catch (err) {
         console.error("Failed to load inventory:", err);
-        document.getElementById('productTableBody').innerHTML = 
-            `<tr><td colspan="6" style="text-align:center; color:red;">Error loading data</td></tr>`;
     }
 }
+window.onload = loadInventory;
 
 // 3. Make sure your renderTable logic is solid
 function renderTable() {

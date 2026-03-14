@@ -194,8 +194,6 @@
             // Replace all existing saveReceipt functions with this SINGLE version:
 async function saveReceipt(event) {
     event.preventDefault();
-
-    // 1. Gather the Header Data
     const receiptData = {
         vendor: document.getElementById('vendorName').value,
         date: document.getElementById('scheduleDate').value,
@@ -203,48 +201,34 @@ async function saveReceipt(event) {
         products: []
     };
 
-    // 2. Gather the Product List (Including Category!)
-    const rows = document.querySelectorAll('#productList tr');
-    rows.forEach(row => {
+    document.querySelectorAll('#productList tr').forEach(row => {
         const inputs = row.querySelectorAll('input');
-        const selectElement = row.querySelector('select'); // Grab the dropdown
-        
-        // Ensure the row actually has a product name typed in
+        const select = row.querySelector('select');
         if(inputs[0].value) {
             receiptData.products.push({
                 name: inputs[0].value,
                 qty: inputs[1].value,
-                category: selectElement ? selectElement.value : "General" // Grab the value safely
+                category: select ? select.value : "General"
             });
         }
     });
 
-    // 3. SEND TO PYTHON BACKEND
-    try {
-        const response = await fetch('http://127.0.0.1:5000/api/receipts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(receiptData)
-        });
+    // 2. Use secureFetch for POST requests
+    const res = await secureFetch('http://127.0.0.1:5000/api/receipts', {
+        method: 'POST',
+        body: JSON.stringify(receiptData)
+    });
 
-        if (response.ok) {
-            alert("Receipt saved with Categories!");
-            location.reload(); 
-        } else {
-            alert("Failed to save. Check backend terminal.");
-        }
-    } catch (err) {
-        console.error("Failed to save to backend:", err);
-    }
+    if (res.ok) location.reload();
 }
 async function loadReceiptsTable() {
-    const res = await fetch('http://127.0.0.1:5000/api/receipts');
+    // 1. Use secureFetch to send the User-ID
+    const res = await secureFetch('http://127.0.0.1:5000/api/receipts');
     const data = await res.json();
     const tbody = document.querySelector('.data-table tbody');
     tbody.innerHTML = ''; 
 
     data.forEach(op => {
-        // Show 'Validate' button ONLY if the status is not already 'Done'
         let actionBtn = op.status !== 'Done' ? 
             `<button class="btn btn-primary btn-small" onclick="validateReceipt(${op.operation_id})">Validate</button>` : 
             `<span style="color: #45a29e; font-weight: bold;">✓ Received</span>`;
@@ -257,30 +241,15 @@ async function loadReceiptsTable() {
                 <td>${op.scheduled_date}</td>
                 <td><span class="status-badge status-${op.status.toLowerCase()}">${op.status}</span></td>
                 <td>${actionBtn}</td> 
-            </tr>
-        `;
+            </tr>`;
     });
 }
 
 // Function to trigger the actual stock increase in the database
 async function validateReceipt(id) {
-    // A quick safety check before changing database numbers
-    if(!confirm("Validate this receipt? This will officially add the items to your warehouse stock.")) return;
-
-    try {
-        const res = await fetch(`http://127.0.0.1:5000/api/operations/${id}/validate`, {
-            method: 'PUT'
-        });
-
-        if (res.ok) {
-            alert("Success! Inventory updated.");
-            location.reload(); // Refresh the page to update the status to 'Done'
-        } else {
-            alert("Backend error. Check terminal.");
-        }
-    } catch (err) {
-        console.error("Validation failed:", err);
-    }
+    if(!confirm("Validate stock increase?")) return;
+    const res = await secureFetch(`http://127.0.0.1:5000/api/operations/${id}/validate`, { method: 'PUT' });
+    if (res.ok) location.reload();
 }
 window.onload = loadReceiptsTable;
 // Updated Add Product Row Logic

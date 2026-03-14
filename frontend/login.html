@@ -20,8 +20,7 @@
   <h2 class="neon-blue">Login</h2>
 
   <div class="form-group">
-    <label>Username</label>
-    <input type="text" id="username" placeholder="Enter username">
+    <label>Email</label> <input type="text" id="username" placeholder="Enter your registered email">
   </div>
 
   <div class="form-group">
@@ -43,27 +42,8 @@
   </div>
 
 </div>
-
-<script>
-function login() {
-  const user = document.getElementById('username').value;
-  const pass = document.getElementById('password').value;
-  const msg = document.getElementById('msg');
-
-  if (!user || !pass) {
-    msg.textContent = "Please fill in both fields!";
-    msg.className = "msg error-msg";
-    return;
-  }
-
-  if(user === "hackathon" && pass === "1234") {
-    msg.textContent = "Login successful! 🚀";
-    msg.className = "msg success-msg";
-  } else {
-    msg.textContent = "Wrong credentials, try again.";
-    msg.className = "msg error-msg";
-  }
-}
+<script src="js/auth.js"></script>
+<script src="js/login.js">
 </script>
 
 </body>

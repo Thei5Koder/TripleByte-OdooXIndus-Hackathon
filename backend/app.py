@@ -4,6 +4,7 @@ import mysql.connector
 from mysql.connector import Error
 import os
 from dotenv import load_dotenv
+from werkzeug.security import generate_password_hash, check_password_hash
 
 load_dotenv()
 app = Flask(__name__)
@@ -238,10 +239,13 @@ def get_deliveries():
     return jsonify(results)
 @app.route('/api/product-inventory', methods=['GET'])
 def get_product_inventory():
+    user_id = request.headers.get('X-User-ID') # Capture the ID from the secureFetch
+    if not user_id: return jsonify({"error": "Unauthorized"}), 401
+
     conn = get_db_connection()
     try:
         cursor = conn.cursor(dictionary=True)
-        # Added p.product_id and a JOIN to the locations table!
+        # Filter all queries by user_id
         query = """
             SELECT p.product_id, p.name, p.category, p.sku, 
                    COALESCE(i.quantity, 0) as quantity, 
@@ -249,9 +253,29 @@ def get_product_inventory():
             FROM products p
             LEFT JOIN inventory i ON p.product_id = i.product_id
             LEFT JOIN locations l ON i.location_id = l.location_id
+            WHERE p.user_id = %s
         """
-        cursor.execute(query)
+        cursor.execute(query, (user_id,))
         return jsonify(cursor.fetchall()), 200
+    finally:
+        conn.close()
+
+# --- Updated Warehouse Route ---
+@app.route('/api/locations', methods=['POST'])
+def add_location():
+    data = request.json
+    user_id = request.headers.get('X-User-ID')
+    
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        # Ensure the new location is linked to the logged-in user
+        cursor.execute(
+            "INSERT INTO locations (name, address, capacity, user_id) VALUES (%s, %s, %s, %s)",
+            (data['name'], data['address'], data['capacity'], user_id)
+        )
+        conn.commit()
+        return jsonify({"message": "Location added!"}), 201
     finally:
         conn.close()
 @app.route('/api/move-history', methods=['GET'])
@@ -330,6 +354,94 @@ def save_transfer():
     except Exception as e:
         print(f"Transfer Error: {e}")
         return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+@app.route('/api/locations', methods=['GET'])
+def get_locations():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM locations")
+    results = cursor.fetchall()
+    conn.close()
+    return jsonify(results), 200
+
+# 3. UPDATE an existing warehouse
+@app.route('/api/locations/<int:loc_id>', methods=['PUT'])
+def update_location(loc_id):
+    data = request.json
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    # Note: Address is kept read-only per your HTML design
+    cursor.execute(
+        "UPDATE locations SET name = %s, capacity = %s WHERE location_id = %s",
+        (data['name'], data['capacity'], loc_id)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"message": "Location updated!"}), 200
+
+# 4. DELETE a warehouse
+@app.route('/api/locations/<int:loc_id>', methods=['DELETE'])
+def delete_location(loc_id):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM locations WHERE location_id = %s", (loc_id,))
+        conn.commit()
+        return jsonify({"message": "Location deleted!"}), 200
+    except Exception as e:
+        # Prevents crashing if the warehouse has items currently in it!
+        return jsonify({"error": "Cannot delete a warehouse that contains active inventory."}), 400
+    finally:
+        conn.close()
+# 1. LOGIN ROUTE
+# --- USER AUTHENTICATION & PROFILE ---
+
+# 1. LOGIN ROUTE
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.json
+    
+    # 1. DEFINE THE VARIABLE: Pull 'email' from the frontend data
+    email = data.get('email') 
+    password = data.get('password')
+
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        
+        # 2. USE THE VARIABLE: Search using the defined 'email' variable
+        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+        user = cursor.fetchone()
+
+        # 3. VERIFY: Check if user exists and password is correct
+        if user and check_password_hash(user['password_hash'], password):
+            return jsonify({
+                "message": "Login successful",
+                "user": {
+                    "id": user['user_id'],
+                    "full_name": user['full_name'], 
+                    "email": user['email'],
+                    "role": user['role']
+                }
+            }), 200
+        else:
+            return jsonify({"error": "Invalid email or password"}), 401
+    finally:
+        conn.close()
+
+# 2. GET PROFILE ROUTE
+@app.route('/api/users/<int:user_id>', methods=['GET'])
+def get_user_profile(user_id):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT user_id, username, email, role FROM users WHERE user_id = %s", (user_id,))
+        user = cursor.fetchone()
+        
+        if user:
+            return jsonify(user), 200
+        return jsonify({"error": "User not found"}), 404
     finally:
         conn.close()
 if __name__ == '__main__':

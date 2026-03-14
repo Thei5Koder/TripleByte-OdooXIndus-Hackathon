@@ -8,62 +8,27 @@ document.getElementById('operations-toggle').addEventListener('click', function(
 // Fetch Real Ledger Data from Python Backend
 async function loadMoveHistory() {
     try {
-        const res = await fetch('http://127.0.0.1:5000/api/move-history');
-        if (!res.ok) throw new Error("Backend connection failed");
-        
+        const res = await secureFetch('http://127.0.0.1:5000/api/move-history');
         const historyData = await res.json();
         const tbody = document.getElementById('historyTableBody');
         tbody.innerHTML = ''; 
 
-        const dash = '<span class="empty-dash">—</span>';
-
         historyData.forEach((record, index) => {
-            let arrowHTML = '';
-            let receiptRef = null;
-            let deliveryRef = null;
-            let transferRef = null;
-
-            // 1. Identify Movement Type based on Location IDs
-            if (record.from_location_id === null) {
-                // Coming from outside (Vendor) = RECEIPT
-                arrowHTML = '<span class="arrow-icon neon-green">⬇</span>';
-                receiptRef = `WH/IN/${record.operation_id}`;
-            } else if (record.to_location_id === null) {
-                // Going to outside (Customer) = DELIVERY
-                arrowHTML = '<span class="arrow-icon neon-red">⬆</span>';
-                deliveryRef = `WH/OUT/${record.operation_id}`;
-            } else {
-                // Moving between internal warehouses = TRANSFER
-                arrowHTML = '<span class="arrow-icon neon-orange">⇄</span>';
-                transferRef = `WH/TR/${record.operation_id}`;
-            }
-
-            // 2. Format the Date (Cleans up MySQL timestamps)
+            let arrowHTML = record.from_location_id === null ? '<span class="neon-green">⬇</span>' : 
+                            record.to_location_id === null ? '<span class="neon-red">⬆</span>' : '<span class="neon-orange">⇄</span>';
+            
             const rawDate = new Date(record.timestamp);
-            const formattedDate = rawDate.toISOString().split('T')[0];
-
-            // 3. Render the Row
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td style="color: #8b92a5;">${index + 1}</td>
-                <td class="text-center">${arrowHTML}</td>
-                <td style="font-family: monospace;">${receiptRef || dash}</td>
-                <td style="font-family: monospace;">${deliveryRef || dash}</td>
-                <td style="font-family: monospace;">${transferRef || dash}</td>
-                <td style="font-weight: 600; color: #fff;">
-                    ${record.product_name} 
-                    <span style="color: #8b92a5; font-size: 0.85em; margin-left: 8px;">(Qty: ${record.quantity_moved})</span>
-                </td>
-                <td>${formattedDate}</td>
-            `;
-            tbody.appendChild(row);
+            tbody.innerHTML += `
+                <tr>
+                    <td style="color: #8b92a5;">${index + 1}</td>
+                    <td class="text-center">${arrowHTML}</td>
+                    <td>${record.from_location_id === null ? `WH/IN/${record.operation_id}` : '—'}</td>
+                    <td>${record.to_location_id === null ? `WH/OUT/${record.operation_id}` : '—'}</td>
+                    <td>${(record.from_location_id && record.to_location_id) ? `WH/TR/${record.operation_id}` : '—'}</td>
+                    <td style="color: #fff;">${record.product_name} <span style="color: #8b92a5;">(Qty: ${record.quantity_moved})</span></td>
+                    <td>${rawDate.toISOString().split('T')[0]}</td>
+                </tr>`;
         });
-    } catch (err) {
-        console.error("Error loading history:", err);
-        document.getElementById('historyTableBody').innerHTML = 
-            `<tr><td colspan="7" class="text-center" style="color: #ff4757;">Failed to load live ledger data. Is your Flask server running?</td></tr>`;
-    }
+    } catch (err) { console.error(err); }
 }
-
-// Run the fetch function as soon as the page loads
 window.onload = loadMoveHistory;
