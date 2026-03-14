@@ -11,7 +11,13 @@ async function fetchDashboard() {
         deliveryWidget.querySelector('.neon-orange').innerText = data.deliveries.remaining;
         deliveryWidget.querySelector('.neon-blue').innerText = data.deliveries.in_ops;
         deliveryWidget.querySelector('.neon-red').innerText = data.deliveries.late;
+        document.getElementById('receipts-late').innerText = data.receipts.late;
+        document.getElementById('receipts-ops').innerText = data.receipts.in_ops;
 
+        // Update Deliveries using direct IDs
+        document.getElementById('deliveries-rem').innerText = data.deliveries.remaining;
+        document.getElementById('deliveries-ops').innerText = data.deliveries.in_ops;
+        document.getElementById('deliveries-late').innerText = data.deliveries.late;
         console.log("Dashboard synced with Backend!");
     } catch (err) {
         console.error("Connection to Flask failed. Is the server running?", err);
