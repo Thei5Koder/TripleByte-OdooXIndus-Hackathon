@@ -21,7 +21,7 @@ InventoryPro is a streamlined, dark-themed web application designed to make inve
 
 ## 🛠️ Tech Stack
 * **Frontend:** HTML5, CSS3 (Custom Grid/Flexbox UI), Vanilla JavaScript
-* **Backend:** [Mention your backend tech here, e.g., Node.js, Python/Django, etc.]
+* **Backend:** Python (Flask)
 * **Database:** MySQL
 
 
