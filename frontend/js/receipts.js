@@ -42,48 +42,47 @@
             row.remove();
         }
         // Function to handle saving the receipt and adding it to the table
-        function saveReceipt(event) {
-            event.preventDefault(); // Prevents the page from reloading
+       async function saveReceipt(event) {
+    event.preventDefault();
 
-            // 1. Get values from the form
-            const ref = document.getElementById('refNumber').value;
-            const vendor = document.getElementById('vendorName').value;
-            const date = document.getElementById('scheduleDate').value;
-            
-            // Defaulting these since they aren't in the simplified modal form
-            const destination = "Main Warehouse"; 
-            const contact = "Pending Contact";
+    const receiptData = {
+        vendor: document.getElementById('vendorName').value,
+        contact: document.getElementById('vendorContact').value,
+        date: document.getElementById('scheduleDate').value,
+        status: document.getElementById('receiptStage').value,
+        products: []
+    };
 
-            // 2. Create a new table row
-            const tbody = document.querySelector('.data-table tbody');
-            const newRow = document.createElement('tr');
-    
-            newRow.innerHTML = `
-                <td>${ref}</td>
-                <td>${vendor}</td>
-                <td>${destination}</td>
-                <td>${contact}</td>
-                <td>${date}</td>
-                <td><span class="status-badge status-ready">Ready</span></td>
-            `;
-    
-            // 3. Add the row to the top of the table
-            tbody.insertBefore(newRow, tbody.firstChild);
-    
-            // 4. Reset the form and close modal
-            document.getElementById('newReceiptForm').reset();
-    
-            // Reset product rows back to just one empty row
-            document.getElementById('productList').innerHTML = `
-                <tr>
-                    <td><input type="text" placeholder="Enter product" required></td>
-                    <td><input type="number" min="1" placeholder="0" required></td>
-                    <td class="no-print"><button type="button" class="btn-icon" disabled>🗑️</button></td>
-                </tr>
-            `;
-    
-            closeModal();
+    // Correctly target the rows to get Name, Qty, and Category
+    const rows = document.querySelectorAll('#productList tr');
+    rows.forEach(row => {
+        const inputs = row.querySelectorAll('input');
+        const select = row.querySelector('select'); // Get the Category dropdown
+        
+        if(inputs[0].value) {
+            receiptData.products.push({
+                name: inputs[0].value,
+                qty: inputs[1].value,
+                category: select.value // New Field! [cite: 47]
+            });
         }
+    });
+
+    try {
+        const response = await fetch('http://127.0.0.1:5000/api/receipts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(receiptData)
+        });
+
+        if (response.ok) {
+            alert("Receipt and Products Synced!");
+            location.reload(); 
+        }
+    } catch (err) {
+        console.error("Sync Error:", err);
+    }
+}
             // Function to change the dropdown's background color dynamically
             function updateStageColor(selectElement) {
                 // Remove all color classes first
@@ -192,63 +191,96 @@
                 
                 closeModal();
             }   
-            async function saveReceipt(event) {
-            event.preventDefault();
+            // Replace all existing saveReceipt functions with this SINGLE version:
+async function saveReceipt(event) {
+    event.preventDefault();
 
-            // 1. Gather the Header Data
-            const receiptData = {
-                vendor: document.getElementById('vendorName').value,
-                date: document.getElementById('scheduleDate').value,
-                status: document.getElementById('receiptStage').value,
-                products: []
-            };
+    // 1. Gather the Header Data
+    const receiptData = {
+        vendor: document.getElementById('vendorName').value,
+        date: document.getElementById('scheduleDate').value,
+        status: document.getElementById('receiptStage').value,
+        products: []
+    };
 
-            // 2. Gather the Product List from the table
-            const rows = document.querySelectorAll('#productList tr');
-            rows.forEach(row => {
-                const inputs = row.querySelectorAll('input');
-                if(inputs[0].value) {
-                    receiptData.products.push({
-                        name: inputs[0].value,
-                        qty: inputs[1].value
-                    });
-                }
+    // 2. Gather the Product List (Including Category!)
+    const rows = document.querySelectorAll('#productList tr');
+    rows.forEach(row => {
+        const inputs = row.querySelectorAll('input');
+        const selectElement = row.querySelector('select'); // Grab the dropdown
+        
+        // Ensure the row actually has a product name typed in
+        if(inputs[0].value) {
+            receiptData.products.push({
+                name: inputs[0].value,
+                qty: inputs[1].value,
+                category: selectElement ? selectElement.value : "General" // Grab the value safely
             });
-
-            // 3. SEND TO PYTHON BACKEND
-            try {
-                const response = await fetch('http://127.0.0.1:5000/api/receipts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(receiptData)
-                });
-
-                if (response.ok) {
-                    alert("Receipt saved to Database!");
-                    location.reload(); // Refresh to show the new data in the table
-                }
-            } catch (err) {
-                console.error("Failed to save to backend:", err);
-            }
         }
+    });
+
+    // 3. SEND TO PYTHON BACKEND
+    try {
+        const response = await fetch('http://127.0.0.1:5000/api/receipts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(receiptData)
+        });
+
+        if (response.ok) {
+            alert("Receipt saved with Categories!");
+            location.reload(); 
+        } else {
+            alert("Failed to save. Check backend terminal.");
+        }
+    } catch (err) {
+        console.error("Failed to save to backend:", err);
+    }
+}
 async function loadReceiptsTable() {
     const res = await fetch('http://127.0.0.1:5000/api/receipts');
     const data = await res.json();
     const tbody = document.querySelector('.data-table tbody');
-    tbody.innerHTML = ''; // Clear fake rows
+    tbody.innerHTML = ''; 
 
     data.forEach(op => {
+        // Show 'Validate' button ONLY if the status is not already 'Done'
+        let actionBtn = op.status !== 'Done' ? 
+            `<button class="btn btn-primary btn-small" onclick="validateReceipt(${op.operation_id})">Validate</button>` : 
+            `<span style="color: #45a29e; font-weight: bold;">✓ Received</span>`;
+
         tbody.innerHTML += `
             <tr>
                 <td>WH/IN/${op.operation_id}</td>
                 <td>${op.partner_name}</td>
                 <td>Main Warehouse</td>
-                <td>${op.status}</td>
                 <td>${op.scheduled_date}</td>
                 <td><span class="status-badge status-${op.status.toLowerCase()}">${op.status}</span></td>
+                <td>${actionBtn}</td> 
             </tr>
         `;
     });
+}
+
+// Function to trigger the actual stock increase in the database
+async function validateReceipt(id) {
+    // A quick safety check before changing database numbers
+    if(!confirm("Validate this receipt? This will officially add the items to your warehouse stock.")) return;
+
+    try {
+        const res = await fetch(`http://127.0.0.1:5000/api/operations/${id}/validate`, {
+            method: 'PUT'
+        });
+
+        if (res.ok) {
+            alert("Success! Inventory updated.");
+            location.reload(); // Refresh the page to update the status to 'Done'
+        } else {
+            alert("Backend error. Check terminal.");
+        }
+    } catch (err) {
+        console.error("Validation failed:", err);
+    }
 }
 window.onload = loadReceiptsTable;
 // Updated Add Product Row Logic
