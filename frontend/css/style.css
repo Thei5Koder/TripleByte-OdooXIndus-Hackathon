@@ -474,7 +474,8 @@ body {
 
 input[type="text"], 
 input[type="date"], 
-input[type="number"] {
+input[type="number"],
+input[type="password"] {
     width: 100%;
     padding: 12px 15px;
     border-radius: 8px;
