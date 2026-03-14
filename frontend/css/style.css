@@ -589,3 +589,48 @@ select option {
         appearance: none; /* removes the dropdown arrow when printing */
     }
 }
+
+/* --- USER PROFILE (SIDEBAR BOTTOM) --- */
+.user-profile {
+    margin-top: auto; /* This magically pushes the profile block to the very bottom of the sidebar */
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px 25px;
+    text-decoration: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background-color 0.3s ease;
+}
+
+.user-profile:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.profile-pic {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #45a29e; /* Matches the cyan accent theme */
+    box-shadow: 0 0 10px rgba(69, 162, 158, 0.3);
+}
+
+.profile-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.profile-name {
+    color: #ffffff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.profile-role {
+    color: #8b92a5;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    font-weight: 600;
+}
