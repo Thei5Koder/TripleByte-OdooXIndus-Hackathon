@@ -79,20 +79,32 @@
             </header>
             
             <form id="newReceiptForm" onsubmit="saveReceipt(event)">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Reference (Auto-generated)</label>
-                        <input type="text" id="refNumber" readonly class="input-readonly">
-                    </div>
-                    <div class="form-group">
-                        <label>Receive From (Vendor)</label>
-                        <input type="text" id="vendorName" placeholder="Enter vendor name" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Schedule Date</label>
-                        <input type="date" id="scheduleDate" required>
-                    </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Reference (Auto-generated)</label>
+                    <input type="text" id="refNumber" readonly class="input-readonly">
                 </div>
+                <div class="form-group">
+                    <label>Receive From (Vendor)</label>
+                    <input type="text" id="vendorName" placeholder="Enter vendor name" required>
+                </div>
+                <div class="form-group">
+                    <label>Contact (Email/Phone)</label>
+                    <input type="text" id="vendorContact" placeholder="Enter contact info" required>
+                </div>
+                <div class="form-group">
+                    <label>Schedule Date</label>
+                    <input type="date" id="scheduleDate" required>
+                </div>
+                <div class="form-group">
+                    <label>Stage</label>
+                    <select id="receiptStage" class="bg-ready" onchange="updateStageColor(this)">
+                        <option value="Ready">Ready</option>
+                        <option value="Draft">Draft</option>
+                        <option value="Waiting">Waiting</option>
+                    </select>
+                </div>
+            </div>
 
                 <div class="products-section">
                     <h3>Products</h3>
@@ -206,6 +218,114 @@
     
             closeModal();
         }
+            // Function to change the dropdown's background color dynamically
+            function updateStageColor(selectElement) {
+                // Remove all color classes first
+                selectElement.classList.remove('bg-ready', 'bg-draft', 'bg-waiting');
+                
+                // Add the specific color class based on the selection
+                if (selectElement.value === 'Ready') selectElement.classList.add('bg-ready');
+                if (selectElement.value === 'Draft') selectElement.classList.add('bg-draft');
+                if (selectElement.value === 'Waiting') selectElement.classList.add('bg-waiting');
+            }
+
+            // Updated Function to save the receipt with the stage
+            function saveReceipt(event) {
+                event.preventDefault();
+
+                const ref = document.getElementById('refNumber').value;
+                const vendor = document.getElementById('vendorName').value;
+                const date = document.getElementById('scheduleDate').value;
+                const stage = document.getElementById('receiptStage').value; // Get the stage
+                
+                const destination = "Main Warehouse"; 
+                const contact = "Pending Contact";
+
+                // Determine which CSS class to use for the table badge
+                let badgeClass = '';
+                if (stage === 'Ready') badgeClass = 'status-ready';
+                if (stage === 'Draft') badgeClass = 'status-draft';
+                if (stage === 'Waiting') badgeClass = 'status-waiting';
+
+                const tbody = document.querySelector('.data-table tbody');
+                const newRow = document.createElement('tr');
+                
+                newRow.innerHTML = `
+                    <td>${ref}</td>
+                    <td>${vendor}</td>
+                    <td>${destination}</td>
+                    <td>${contact}</td>
+                    <td>${date}</td>
+                    <td><span class="status-badge ${badgeClass}">${stage}</span></td>
+                `;
+                
+                tbody.insertBefore(newRow, tbody.firstChild);
+                
+                document.getElementById('newReceiptForm').reset();
+                
+                // Reset dropdown color back to default (Ready)
+                const stageDropdown = document.getElementById('receiptStage');
+                updateStageColor(stageDropdown);
+                
+                document.getElementById('productList').innerHTML = `
+                    <tr>
+                        <td><input type="text" placeholder="Enter product" required></td>
+                        <td><input type="number" min="1" placeholder="0" required></td>
+                        <td class="no-print"><button type="button" class="btn-icon" disabled>🗑️</button></td>
+                    </tr>
+                `;
+                closeModal();
+            }     
+            // Updated Function to save the receipt with the contact info
+            function saveReceipt(event) {
+                event.preventDefault();
+
+                const ref = document.getElementById('refNumber').value;
+                const vendor = document.getElementById('vendorName').value;
+                const contact = document.getElementById('vendorContact').value; // Get the contact info
+                const date = document.getElementById('scheduleDate').value;
+                const stage = document.getElementById('receiptStage').value; 
+                
+                // Still defaulting destination as it's not in the modal yet
+                const destination = "Main Warehouse"; 
+
+                // Determine which CSS class to use for the table badge
+                let badgeClass = '';
+                if (stage === 'Ready') badgeClass = 'status-ready';
+                if (stage === 'Draft') badgeClass = 'status-draft';
+                if (stage === 'Waiting') badgeClass = 'status-waiting';
+
+                const tbody = document.querySelector('.data-table tbody');
+                const newRow = document.createElement('tr');
+                
+                // Inject the real contact variable into the table row
+                newRow.innerHTML = `
+                    <td>${ref}</td>
+                    <td>${vendor}</td>
+                    <td>${destination}</td>
+                    <td>${contact}</td> 
+                    <td>${date}</td>
+                    <td><span class="status-badge ${badgeClass}">${stage}</span></td>
+                `;
+                
+                tbody.insertBefore(newRow, tbody.firstChild);
+                
+                document.getElementById('newReceiptForm').reset();
+                
+                // Reset dropdown color back to default (Ready)
+                const stageDropdown = document.getElementById('receiptStage');
+                updateStageColor(stageDropdown);
+                
+                document.getElementById('productList').innerHTML = `
+                    <tr>
+                        <td><input type="text" placeholder="Enter product" required></td>
+                        <td><input type="number" min="1" placeholder="0" required></td>
+                        <td class="no-print"><button type="button" class="btn-icon" disabled>🗑️</button></td>
+                    </tr>
+                `;
+                
+                closeModal();
+            }   
     </script>
 </body>
 </html>

@@ -533,3 +533,59 @@ input:focus {
         padding: 0;
     }
 }
+/* --- DROPDOWN & STAGE COLORS --- */
+select {
+    width: 100%;
+    padding: 12px 15px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    font-size: 0.95rem;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+/* Fix option background colors for dark mode */
+select option {
+    background-color: #1a1e29;
+    color: #ffffff;
+}
+
+/* Dynamic Background colors for the Dropdown */
+.bg-ready { 
+    background-color: rgba(46, 213, 115, 0.15); 
+    border-color: #2ed573; 
+}
+.bg-draft { 
+    background-color: rgba(255, 165, 2, 0.15); 
+    border-color: #ffa502; 
+}
+.bg-waiting { 
+    background-color: rgba(255, 71, 87, 0.15); 
+    border-color: #ff4757; 
+}
+
+/* Table Badges for the new statuses */
+.status-draft {
+    background-color: rgba(255, 165, 2, 0.15);
+    color: #ffa502;
+    border: 1px solid rgba(255, 165, 2, 0.3);
+}
+
+.status-waiting {
+    background-color: rgba(255, 71, 87, 0.15);
+    color: #ff4757;
+    border: 1px solid rgba(255, 71, 87, 0.3);
+}
+
+/* Ensure the select element prints properly */
+@media print {
+    select {
+        border: none;
+        background: transparent !important;
+        color: #000;
+        padding: 0;
+        appearance: none; /* removes the dropdown arrow when printing */
+    }
+}
