@@ -1,1 +1,1 @@
-# CoreInventory---hackathon
+# TripleByte-OdooXIndus-Hackathon
