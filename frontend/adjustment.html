@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Adjustment - InventoryPro</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo">INVENTORY<span class="logo-accent">PRO</span></div>
+            <nav class="nav-menu">
+                <a href="index.html" class="nav-item">Dashboard</a>
+                
+                <div class="nav-item-group">
+                    <div class="nav-item active" id="operations-toggle">
+                        Operations <span class="arrow" style="transform: rotate(180deg);">▼</span>
+                    </div>
+                    <div class="sub-menu show" id="operations-submenu">
+                        <a href="receipts.html" class="sub-nav-item">Receipts</a>
+                        <a href="delivery.html" class="sub-nav-item">Delivery</a>
+                        <a href="adjustment.html" class="sub-nav-item active-sub">Adjustment</a>
+                    </div>
+                </div>
+
+                <a href="product.html" class="nav-item">Product</a>
+                <a href="move-history.html" class="nav-item">Move History</a>
+                <a href="settings.html" class="nav-item">Settings</a>
+            </nav>
+
+            <a href="profile.html" class="user-profile">
+                <img src="https://ui-avatars.com/api/?name=Admin+User&background=45a29e&color=fff" alt="Profile Picture" class="profile-pic">
+                <div class="profile-info">
+                    <span class="profile-name">Admin User</span>
+                    <span class="profile-role">Manager</span>
+                </div>
+            </a>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-header page-header">
+                <h1>Internal Stock Transfer</h1>
+                <button class="btn btn-primary" onclick="openTransferModal()">Next: Select Destination ➔</button>
+            </header>
+
+            <div class="filter-bar card" style="padding: 15px 24px; margin-bottom: -10px; display: flex; align-items: center; gap: 15px;">
+                <label for="sourceWarehouse" style="color: #8b92a5; font-weight: 600;">Move From (Source):</label>
+                <select id="sourceWarehouse" style="width: 250px;" onchange="renderAdjustmentTable()">
+                    <option value="Main Warehouse">Main Warehouse</option>
+                    <option value="Zone B Storage">Zone B Storage</option>
+                </select>
+            </div>
+
+            <div class="card table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">Select</th>
+                            <th>Product Name</th>
+                            <th>Category</th>
+                            <th>Available Qty</th>
+                            <th style="width: 150px;">Qty to Move</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adjustmentTableBody">
+                        </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <div id="transferModal" class="modal-overlay">
+        <div class="modal-content card" style="max-width: 500px;">
+            <header class="modal-header">
+                <h2>Confirm Transfer Details</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </header>
+            
+            <form id="transferForm" onsubmit="confirmTransfer(event)">
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>Moving <span id="selectedItemCount" class="neon-blue">0</span> products to (Destination):</label>
+                    <select id="destinationWarehouse" required>
+                        <option value="" disabled selected>Select destination...</option>
+                        <option value="Main Warehouse">Main Warehouse</option>
+                        <option value="Zone B Storage">Zone B Storage</option>
+                        <option value="Storefront Retail">Storefront Retail</option>
+                    </select>
+                </div>
+
+                <div class="alert-box" style="background: rgba(255, 165, 2, 0.1); border-left: 4px solid #ffa502; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+                    <p style="color: #ffa502; font-size: 0.9rem; margin: 0;"><strong>Note:</strong> This action will immediately update the stock levels across both warehouses.</p>
+                </div>
+
+                <footer class="modal-footer">
+                    <button type="button" class="btn btn-text" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Confirm Transfer</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Sidebar logic
+        document.getElementById('operations-toggle').addEventListener('click', function() {
+            const submenu = document.getElementById('operations-submenu');
+            const arrow = this.querySelector('.arrow');
+            submenu.classList.toggle('show');
+            arrow.style.transform = submenu.classList.contains('show') ? 'rotate(180deg)' : 'rotate(0deg)';
+        });
+
+        // Mock DB (Same as Product page for consistency)
+        const productsDB = [
+            { id: 1, name: "Industrial Screws (Pack)", category: "Hardware", warehouse: "Main Warehouse", qty: 450 },
+            { id: 2, name: "Safety Helmets", category: "Safety Gear", warehouse: "Main Warehouse", qty: 5 },
+            { id: 3, name: "Hydraulic Pump", category: "Machinery", warehouse: "Zone B Storage", qty: 15 },
+            { id: 4, name: "Printer Ink Cartridge", category: "Office Supplies", warehouse: "Main Warehouse", qty: 32 }
+        ];
+
+        function renderAdjustmentTable() {
+            const sourceWh = document.getElementById('sourceWarehouse').value;
+            const tbody = document.getElementById('adjustmentTableBody');
+            tbody.innerHTML = ''; 
+
+            productsDB.forEach(product => {
+                if (product.warehouse !== sourceWh) return; 
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <input type="checkbox" class="row-checkbox" onchange="toggleQuantityInput(this, 'qty-${product.id}')" value="${product.id}">
+                    </td>
+                    <td style="font-weight: 600; color: #fff;">${product.name}</td>
+                    <td>${product.category}</td>
+                    <td>${product.qty}</td>
+                    <td>
+                        <input type="number" id="qty-${product.id}" class="inline-input" min="1" max="${product.qty}" placeholder="0" disabled>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Enable/Disable the quantity input based on checkbox
+        function toggleQuantityInput(checkbox, inputId) {
+            const qtyInput = document.getElementById(inputId);
+            if (checkbox.checked) {
+                qtyInput.disabled = false;
+                qtyInput.required = true;
+                qtyInput.focus();
+            } else {
+                qtyInput.disabled = true;
+                qtyInput.required = false;
+                qtyInput.value = ''; // clear it out
+            }
+        }
+
+        // Modal Logic
+        const modal = document.getElementById('transferModal');
+
+        function openTransferModal() {
+            // Count how many checkboxes are ticked
+            const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+            
+            if (selectedCheckboxes.length === 0) {
+                alert("Please select at least one product to move.");
+                return;
+            }
+
+            // Update the count in the modal
+            document.getElementById('selectedItemCount').innerText = selectedCheckboxes.length;
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            modal.classList.remove('active');
+            document.getElementById('transferForm').reset();
+        }
+
+        function confirmTransfer(event) {
+            event.preventDefault();
+            const source = document.getElementById('sourceWarehouse').value;
+            const dest = document.getElementById('destinationWarehouse').value;
+
+            if (source === dest) {
+                alert("Source and Destination warehouses cannot be the same!");
+                return;
+            }
+
+            // In a real app, you would gather the checked item IDs and their input quantities here,
+            // then send an AJAX/Fetch request to your SQL backend.
+            alert(`Success! Stock successfully transferred from ${source} to ${dest}.`);
+            
+            // Uncheck everything and close modal to simulate success
+            document.querySelectorAll('.row-checkbox').forEach(cb => { cb.checked = false; });
+            document.querySelectorAll('.inline-input').forEach(input => { 
+                input.value = ''; 
+                input.disabled = true; 
+            });
+            closeModal();
+        }
+
+        // Initial render
+        renderAdjustmentTable();
+    </script>
+</body>
+</html>
