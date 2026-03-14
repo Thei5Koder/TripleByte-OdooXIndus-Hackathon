@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Products - InventoryPro</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo">INVENTORY<span class="logo-accent">PRO</span></div>
+            <nav class="nav-menu">
+                <a href="index.html" class="nav-item">Dashboard</a>
+                
+                <div class="nav-item-group">
+                    <div class="nav-item" id="operations-toggle">
+                        Operations <span class="arrow">▼</span>
+                    </div>
+                    <div class="sub-menu" id="operations-submenu">
+                        <a href="receipts.html" class="sub-nav-item">Receipts</a>
+                        <a href="delivery.html" class="sub-nav-item">Delivery</a>
+                        <a href="adjustment.html" class="sub-nav-item">Adjustment</a>
+                    </div>
+                </div>
+
+                <a href="product.html" class="nav-item active">Product</a>
+                <a href="move-history.html" class="nav-item">Move History</a>
+                <a href="settings.html" class="nav-item">Settings</a>
+            </nav>
+
+            <a href="profile.html" class="user-profile">
+                <img src="https://ui-avatars.com/api/?name=Admin+User&background=45a29e&color=fff" alt="Profile Picture" class="profile-pic">
+                <div class="profile-info">
+                    <span class="profile-name">Admin User</span>
+                    <span class="profile-role">Manager</span>
+                </div>
+            </a>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-header page-header">
+                <h1>Products Inventory</h1>
+                <!-- <button class="btn btn-primary">+ Add New Product</button> -->
+            </header>
+
+            <div class="filter-bar card" style="padding: 15px 24px; margin-bottom: -10px; display: flex; align-items: center; gap: 15px;">
+                <label for="warehouseFilter" style="color: #8b92a5; font-weight: 600;">View Warehouse:</label>
+                <select id="warehouseFilter" style="width: 250px;" onchange="renderTable()">
+                    <option value="All">All Warehouses</option>
+                    <option value="Main Warehouse">Main Warehouse</option>
+                    <option value="Zone B Storage">Zone B Storage</option>
+                </select>
+            </div>
+
+            <div class="card table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th>Category</th>
+                            <th>Warehouse</th>
+                            <th>Quantity Available</th>
+                            <th>Stock Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productTableBody">
+                        </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Dropdown toggle logic for sidebar
+        document.getElementById('operations-toggle').addEventListener('click', function() {
+            const submenu = document.getElementById('operations-submenu');
+            const arrow = this.querySelector('.arrow');
+            submenu.classList.toggle('show');
+            arrow.style.transform = submenu.classList.contains('show') ? 'rotate(180deg)' : 'rotate(0deg)';
+        });
+
+        /* --- INVENTORY LOGIC SIMULATION --- 
+           In your real app, this data will come from your SQL database.
+           Formula: Available = (Initial Stock + Total Received) - Total Delivered 
+        */
+        
+        const productsDB = [
+            { 
+                name: "Industrial Screws (Pack)", 
+                category: "Hardware", 
+                warehouse: "Main Warehouse",
+                initialStock: 500,
+                received: 100, // From Receipts page
+                delivered: 150 // From Delivery page
+            },
+            { 
+                name: "Safety Helmets", 
+                category: "Safety Gear", 
+                warehouse: "Main Warehouse",
+                initialStock: 50,
+                received: 0,
+                delivered: 45
+            },
+            { 
+                name: "Hydraulic Pump", 
+                category: "Machinery", 
+                warehouse: "Zone B Storage",
+                initialStock: 12,
+                received: 5,
+                delivered: 2
+            }
+        ];
+
+        function renderTable() {
+            const selectedWarehouse = document.getElementById('warehouseFilter').value;
+            const tbody = document.getElementById('productTableBody');
+            tbody.innerHTML = ''; // Clear current rows
+
+            productsDB.forEach(product => {
+                // Filter by dropdown selection
+                if (selectedWarehouse !== "All" && product.warehouse !== selectedWarehouse) {
+                    return; 
+                }
+
+                // --- THE MATH: Dynamic Stock Calculation ---
+                const currentQuantity = product.initialStock + product.received - product.delivered;
+
+                // Determine Status Badge based on current quantity
+                let badgeClass = '';
+                let statusText = '';
+                
+                if (currentQuantity > 20) {
+                    badgeClass = 'status-ready'; // Reusing your green badge CSS
+                    statusText = 'In Stock';
+                } else if (currentQuantity > 0) {
+                    badgeClass = 'status-draft'; // Reusing your yellow badge CSS
+                    statusText = 'Low Stock';
+                } else {
+                    badgeClass = 'status-waiting'; // Reusing your red badge CSS
+                    statusText = 'Out of Stock';
+                }
+
+                // Create the table row
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td style="font-weight: 600; color: #fff;">${product.name}</td>
+                    <td>${product.category}</td>
+                    <td>${product.warehouse}</td>
+                    <td style="font-size: 1.1rem; font-weight: bold;">${currentQuantity}</td>
+                    <td><span class="status-badge ${badgeClass}">${statusText}</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Run this once when the page loads to show the initial table
+        renderTable();
+    </script>
+</body>
+</html>

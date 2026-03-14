@@ -24,7 +24,7 @@
                     </div>
                 </div>
 
-                <a href="stock.html" class="nav-item">Stock</a>
+                <a href="product.html" class="nav-item">Product</a>
                 <a href="move-history.html" class="nav-item">Move History</a>
                 <a href="settings.html" class="nav-item">Settings</a>
             </nav>
@@ -114,25 +114,33 @@
             </div>
 
                 <div class="products-section">
-                    <h3>Products</h3>
-                    <table class="data-table nested-table" id="productsTable">
-                        <thead>
-                            <tr>
-                                <th>Product Name</th>
-                                <th>Quantity</th>
-                                <th class="no-print">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="productList">
-                            <tr>
-                                <td><input type="text" placeholder="Enter product" required></td>
-                                <td><input type="number" min="1" placeholder="0" required></td>
-                                <td class="no-print"><button type="button" class="btn-icon" disabled>🗑️</button></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <button type="button" class="btn btn-secondary no-print" onclick="addProductRow()">+ Add New Product</button>
-                </div>
+                <h3>Products</h3>
+                <table class="data-table nested-table" id="productsTable">
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th>Quantity</th>
+                            <th>Category</th> <th class="no-print">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productList">
+                        <tr>
+                            <td><input type="text" placeholder="Enter product" required></td>
+                            <td><input type="number" min="1" placeholder="0" required></td>
+                            <td>
+                                <select required>
+                                    <option value="" disabled selected>Select Category...</option>
+                                    <option value="Tech & Electronics">Tech & Electronics</option>
+                                    <option value="Raw Materials">Raw Materials</option>
+                                    <option value="Office Supplies">Office Supplies</option>
+                                </select>
+                            </td>
+                            <td class="no-print"><button type="button" class="btn-icon" disabled>🗑️</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button type="button" class="btn btn-secondary no-print" onclick="addProductRow()">+ Add New Product</button>
+            </div>
 
                 <footer class="modal-footer no-print">
                     <button type="button" class="btn btn-secondary" onclick="window.print()">🖨️ Print</button>
