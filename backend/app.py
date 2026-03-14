@@ -93,41 +93,45 @@ def add_product():
 # --- SAVE NEW RECEIPT WITH PRODUCTS ---
 @app.route('/api/receipts', methods=['POST'])
 def save_full_receipt():
-    data = request.json
-    print(f"DEBUG DATA RECEIVED: {data}") # Check your terminal to see if 'category' is here
+    # 1. Grab the User ID from the secureFetch header
+    user_id = request.headers.get('X-User-ID')
+    if not user_id: return jsonify({"error": "Unauthorized"}), 401
     
+    data = request.json
     conn = get_db_connection()
     try:
         cursor = conn.cursor(dictionary=True)
         
-        # 1. Save Receipt Header
-        query_op = "INSERT INTO Operations (document_type, partner_name, scheduled_date, status) VALUES ('Receipt', %s, %s, %s)"
-        cursor.execute(query_op, (data.get('vendor'), data.get('date'), data.get('status')))
+        # 2. Save Receipt Header WITH user_id
+        query_op = """
+            INSERT INTO Operations (document_type, partner_name, scheduled_date, status, user_id) 
+            VALUES ('Receipt', %s, %s, %s, %s)
+        """
+        cursor.execute(query_op, (data.get('vendor'), data.get('date'), data.get('status'), user_id))
         op_id = cursor.lastrowid
 
         for item in data.get('products', []):
-            # 1. Clean the input (remove accidental spaces)
             clean_name = item['name'].strip()
             
-            # 2. Search case-insensitively using LOWER()
-            cursor.execute("SELECT product_id FROM products WHERE LOWER(name) = LOWER(%s)", (clean_name,))
+            # 3. Search for product belonging to THIS user
+            cursor.execute("SELECT product_id FROM products WHERE LOWER(name) = LOWER(%s) AND user_id = %s", (clean_name, user_id))
             existing_product = cursor.fetchone()
 
             if existing_product:
                 product_id = existing_product['product_id']
             else:
-                # Create NEW product if it truly doesn't exist
+                # 4. Create NEW product for THIS user
                 category = item.get('category', 'General')
                 sku = f"SKU-{clean_name[:3].upper()}-{op_id}"
                 
-                query_prod = "INSERT INTO products (name, category, sku, unit_of_measure) VALUES (%s, %s, %s, %s)"
-                cursor.execute(query_prod, (clean_name, category, sku, 'Units'))
+                query_prod = "INSERT INTO products (name, category, sku, unit_of_measure, user_id) VALUES (%s, %s, %s, %s, %s)"
+                cursor.execute(query_prod, (clean_name, category, sku, 'Units', user_id))
                 product_id = cursor.lastrowid
                 
-                # Initialize inventory at 0
+                # 5. Initialize inventory record for THIS user
                 cursor.execute("INSERT INTO inventory (product_id, location_id, quantity) VALUES (%s, 1, 0)", (product_id,))
 
-            # 3. Link to Operation using the confirmed product_id
+            # Link item to the operation
             cursor.execute(
                 "INSERT INTO operation_items (operation_id, product_id, quantity) VALUES (%s, %s, %s)",
                 (op_id, product_id, item['qty'])
@@ -142,110 +146,135 @@ def save_full_receipt():
         conn.close()
 
 # --- VALIDATE OPERATION (The "Stock Multiplier") ---
+
 @app.route('/api/operations/<int:op_id>/validate', methods=['PUT'])
 def validate_operation(op_id):
+    # 1. Grab the User ID from the secureFetch header
+    user_id = request.headers.get('X-User-ID')
+    if not user_id: 
+        return jsonify({"error": "Unauthorized: No User ID"}), 401
+
     conn = get_db_connection()
     try:
         cursor = conn.cursor(dictionary=True)
         
-        # 1. Identify Document Type
-        cursor.execute("SELECT document_type FROM Operations WHERE operation_id = %s", (op_id,))
-        op_type = cursor.fetchone()['document_type']
+        # 2. Verify ownership
+        cursor.execute("SELECT * FROM Operations WHERE operation_id = %s", (op_id,))
+        op = cursor.fetchone()
+        
+        if not op:
+            return jsonify({"error": "Operation not found"}), 404
+            
+        # If operation has no user_id, current user claims it
+        if op['user_id'] is None:
+            cursor.execute("UPDATE Operations SET user_id = %s WHERE operation_id = %s", (user_id, op_id))
+        elif str(op['user_id']) != str(user_id):
+            return jsonify({"error": "Ownership mismatch"}), 403
 
-        # 2. Get the items
+        # 3. Process Stock & Log History
         cursor.execute("SELECT product_id, quantity FROM operation_items WHERE operation_id = %s", (op_id,))
         items = cursor.fetchall()
         
-        # 3. Mark as 'Done'
-        cursor.execute("UPDATE Operations SET status = 'Done' WHERE operation_id = %s", (op_id,))
-        
         for item in items:
-            # Set math & locations based on your specific ledger design
-            if op_type == 'Receipt':
-                math_modifier = item['quantity']
-                from_loc = None  # Coming from outside vendor
-                to_loc = 1       # Going to Main Warehouse
-            else: # Delivery
-                math_modifier = -item['quantity']
-                from_loc = 1     # Coming from Main Warehouse
-                to_loc = None    # Going to outside customer
+            modifier = item['quantity'] if op['document_type'] == 'Receipt' else -item['quantity']
             
-            # Update physical stock in inventory table
+            # Update Inventory (Ensures product exists in inventory table)
             cursor.execute("""
-                UPDATE inventory SET quantity = quantity + %s 
-                WHERE product_id = %s AND location_id = 1
-            """, (math_modifier, item['product_id']))
-            
-            # 4. Log in the Stock Ledger using YOUR exact columns!
+                INSERT INTO inventory (product_id, location_id, quantity) 
+                VALUES (%s, 1, %s) 
+                ON DUPLICATE KEY UPDATE quantity = quantity + %s
+            """, (item['product_id'], modifier, modifier))
+
+            # --- THE FIX: ADD TO MOVE HISTORY LEDGER ---
+            from_loc = None if op['document_type'] == 'Receipt' else 1
+            to_loc = 1 if op['document_type'] == 'Receipt' else None
+
             cursor.execute("""
                 INSERT INTO stock_ledger (product_id, operation_id, quantity_moved, from_location_id, to_location_id)
                 VALUES (%s, %s, %s, %s, %s)
             """, (item['product_id'], op_id, item['quantity'], from_loc, to_loc))
 
+        # 4. Mark as Done
+        cursor.execute("UPDATE Operations SET status = 'Done' WHERE operation_id = %s", (op_id,))
         conn.commit()
-        return jsonify({"message": f"{op_type} validated successfully!"}), 200
+        return jsonify({"message": "Success! Stock updated and logged."}), 200
+
     except Exception as e:
-        print(f"ERROR: {e}")
+        print(f"Validation Error: {e}")
         return jsonify({"error": str(e)}), 500
     finally:
         conn.close()
 @app.route('/api/receipts', methods=['GET'])
 def get_receipts():
+    user_id = request.headers.get('X-User-ID') #
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM Operations WHERE document_type='Receipt' ORDER BY operation_id DESC")
+    # Added user_id filter
+    cursor.execute("SELECT * FROM Operations WHERE document_type='Receipt' AND user_id = %s ORDER BY operation_id DESC", (user_id,))
     results = cursor.fetchall()
     conn.close()
     return jsonify(results)
+
+@app.route('/api/deliveries', methods=['GET'])
+def get_deliveries():
+    user_id = request.headers.get('X-User-ID') #
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    # Added user_id filter
+    cursor.execute("SELECT * FROM Operations WHERE document_type='Delivery' AND user_id = %s ORDER BY operation_id DESC", (user_id,))
+    results = cursor.fetchall()
+    conn.close()
+    return jsonify(results)
+
 @app.route('/api/deliveries', methods=['POST'])
 def save_delivery():
+    # 1. Grab the User ID from the secureFetch header
+    user_id = request.headers.get('X-User-ID')
+    if not user_id: return jsonify({"error": "Unauthorized"}), 401
+    
     data = request.json
     conn = get_db_connection()
     try:
-        cursor = conn.cursor()
-        # Insert main operation [cite: 33, 61]
-        query = """
-            INSERT INTO Operations (document_type, partner_name, scheduled_date, status) 
-            VALUES ('Delivery', %s, %s, %s)
+        cursor = conn.cursor(dictionary=True)
+        
+        # 2. Save Delivery Header WITH user_id
+        query_op = """
+            INSERT INTO Operations (document_type, partner_name, scheduled_date, status, user_id) 
+            VALUES ('Delivery', %s, %s, %s, %s)
         """
-        cursor.execute(query, (data['customer'], data['date'], data['status']))
+        cursor.execute(query_op, (data['customer'], data['date'], data['status'], user_id))
         op_id = cursor.lastrowid
         
-        # Save product items to link them [cite: 62-63]
         for item in data['products']:
-            clean_name = item['name'].strip() # Remove invisible spaces
+            clean_name = item['name'].strip()
             
-            # Match case-insensitively!
-            cursor.execute("SELECT product_id FROM products WHERE LOWER(name) = LOWER(%s)", (clean_name,))
+            # 3. Match product belonging to THIS user ONLY
+            cursor.execute("SELECT product_id FROM products WHERE LOWER(name) = LOWER(%s) AND user_id = %s", (clean_name, user_id))
             prod = cursor.fetchone()
             
             if prod:
                 cursor.execute("INSERT INTO operation_items (operation_id, product_id, quantity) VALUES (%s, %s, %s)", 
-                               (op_id, prod[0], item['qty']))
-        
+                               (op_id, prod['product_id'], item['qty']))
+            else:
+                # Optional: Handle error if product doesn't exist for this user
+                print(f"Product {clean_name} not found for user {user_id}")
+
         conn.commit()
         return jsonify({"message": "Delivery created"}), 201
+    except Exception as e:
+        print(f"Delivery Error: {e}")
+        return jsonify({"error": str(e)}), 500
     finally:
         conn.close()
-
-# --- FETCH DELIVERIES ---
-@app.route('/api/deliveries', methods=['GET'])
-def get_deliveries():
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM Operations WHERE document_type='Delivery' ORDER BY operation_id DESC")
-    results = cursor.fetchall()
-    conn.close()
-    return jsonify(results)
 @app.route('/api/product-inventory', methods=['GET'])
 def get_product_inventory():
-    user_id = request.headers.get('X-User-ID') # Capture the ID from the secureFetch
+    user_id = request.headers.get('X-User-ID') # The security handshake
     if not user_id: return jsonify({"error": "Unauthorized"}), 401
 
     conn = get_db_connection()
     try:
         cursor = conn.cursor(dictionary=True)
-        # Filter all queries by user_id
+        # This query joins products with their stock levels and warehouse names
         query = """
             SELECT p.product_id, p.name, p.category, p.sku, 
                    COALESCE(i.quantity, 0) as quantity, 
@@ -280,77 +309,66 @@ def add_location():
         conn.close()
 @app.route('/api/move-history', methods=['GET'])
 def get_move_history():
+    user_id = request.headers.get('X-User-ID') # The SaaS Handshake
     conn = get_db_connection()
     try:
         cursor = conn.cursor(dictionary=True)
-        # Fetch ledger entries using your actual columns
+        # Added WHERE p.user_id = %s to filter history by the owner
         query = """
             SELECT sl.ledger_id, p.name as product_name, sl.quantity_moved, 
                    sl.from_location_id, sl.to_location_id, sl.timestamp, sl.operation_id
             FROM stock_ledger sl
             JOIN products p ON sl.product_id = p.product_id
+            WHERE p.user_id = %s
             ORDER BY sl.timestamp DESC
         """
-        cursor.execute(query)
-        history = cursor.fetchall()
-        return jsonify(history), 200
+        cursor.execute(query, (user_id,))
+        return jsonify(cursor.fetchall()), 200
     finally:
         conn.close()
-
 # --- INTERNAL STOCK TRANSFER ---
 @app.route('/api/transfer', methods=['POST'])
 def save_transfer():
+    user_id = request.headers.get('X-User-ID')
+    if not user_id: return jsonify({"error": "Unauthorized"}), 401
+
     data = request.json
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         
-        # 1. Create the Operation Record
-        query_op = "INSERT INTO Operations (document_type, partner_name, scheduled_date, status) VALUES ('Transfer', 'Internal Move', CURDATE(), 'Done')"
-        cursor.execute(query_op)
+        cursor.execute("""
+            INSERT INTO Operations (document_type, partner_name, scheduled_date, status, user_id) 
+            VALUES ('Transfer', 'Internal Move', CURDATE(), 'Done', %s)
+        """, (user_id,))
         op_id = cursor.lastrowid
-        
-        source_loc = data['source_location']
-        dest_loc = data['dest_location']
 
         for item in data['products']:
-            product_id = item['product_id']
-            qty = int(item['qty'])
+            prod_id = item['product_id']
+            qty = item['qty']
+            source_loc = data['source_location']
+            dest_loc = data['dest_location']
 
-            # 2. Subtract from Source Warehouse
+            # 1. Update Inventory Logic
+            cursor.execute("""
+                INSERT INTO inventory (product_id, location_id, quantity) 
+                VALUES (%s, %s, %s) 
+                ON DUPLICATE KEY UPDATE quantity = quantity + %s
+            """, (prod_id, dest_loc, qty, qty))
+
             cursor.execute("""
                 UPDATE inventory SET quantity = quantity - %s 
                 WHERE product_id = %s AND location_id = %s
-            """, (qty, product_id, source_loc))
+            """, (qty, prod_id, source_loc))
 
-            # 3. Add to Destination Warehouse
-            # First, check if the product already has a row in the destination warehouse
-            cursor.execute("SELECT * FROM inventory WHERE product_id = %s AND location_id = %s", (product_id, dest_loc))
-            exists = cursor.fetchone()
-
-            if exists:
-                cursor.execute("""
-                    UPDATE inventory SET quantity = quantity + %s 
-                    WHERE product_id = %s AND location_id = %s
-                """, (qty, product_id, dest_loc))
-            else:
-                cursor.execute("""
-                    INSERT INTO inventory (product_id, location_id, quantity) 
-                    VALUES (%s, %s, %s)
-                """, (product_id, dest_loc, qty))
-
-            # 4. Log in the Stock Ledger (Both locations filled!)
+            # 2. THE MISSING PIECE: Log the move into the Ledger
             cursor.execute("""
                 INSERT INTO stock_ledger (product_id, operation_id, quantity_moved, from_location_id, to_location_id)
                 VALUES (%s, %s, %s, %s, %s)
-            """, (product_id, op_id, qty, source_loc, dest_loc))
-            
-            # 5. Link to operation_items
-            cursor.execute("INSERT INTO operation_items (operation_id, product_id, quantity) VALUES (%s, %s, %s)", 
-                           (op_id, product_id, qty))
+            """, (prod_id, op_id, qty, source_loc, dest_loc))
 
         conn.commit()
-        return jsonify({"message": "Transfer successful!"}), 201
+        return jsonify({"message": "Success"}), 201
     except Exception as e:
         print(f"Transfer Error: {e}")
         return jsonify({"error": str(e)}), 500
@@ -358,12 +376,15 @@ def save_transfer():
         conn.close()
 @app.route('/api/locations', methods=['GET'])
 def get_locations():
+    user_id = request.headers.get('X-User-ID') # The SaaS Handshake
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM locations")
-    results = cursor.fetchall()
-    conn.close()
-    return jsonify(results), 200
+    try:
+        cursor = conn.cursor(dictionary=True)
+        # Only show warehouses belonging to YOU
+        cursor.execute("SELECT * FROM locations WHERE user_id = %s", (user_id,))
+        return jsonify(cursor.fetchall()), 200
+    finally:
+        conn.close()
 
 # 3. UPDATE an existing warehouse
 @app.route('/api/locations/<int:loc_id>', methods=['PUT'])

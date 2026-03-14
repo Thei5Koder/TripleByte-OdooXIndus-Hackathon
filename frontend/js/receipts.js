@@ -247,9 +247,18 @@ async function loadReceiptsTable() {
 
 // Function to trigger the actual stock increase in the database
 async function validateReceipt(id) {
-    if(!confirm("Validate stock increase?")) return;
-    const res = await secureFetch(`http://127.0.0.1:5000/api/operations/${id}/validate`, { method: 'PUT' });
-    if (res.ok) location.reload();
+    // Ensure 'id' is passed into the URL correctly
+    const res = await secureFetch(`http://127.0.0.1:5000/api/operations/${id}/validate`, {
+        method: 'PUT'
+    });
+
+    if (res.ok) {
+        alert("Validated!");
+        location.reload();
+    } else {
+        const errData = await res.json();
+        alert(`Error: ${errData.error}`);
+    }
 }
 window.onload = loadReceiptsTable;
 // Updated Add Product Row Logic
