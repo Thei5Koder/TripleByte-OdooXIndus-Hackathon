@@ -241,13 +241,14 @@ def get_product_inventory():
     conn = get_db_connection()
     try:
         cursor = conn.cursor(dictionary=True)
-        # We use LEFT JOIN to show products even if they haven't been validated yet
+        # Added p.product_id and a JOIN to the locations table!
         query = """
-            SELECT p.name, p.category, p.sku, 
+            SELECT p.product_id, p.name, p.category, p.sku, 
                    COALESCE(i.quantity, 0) as quantity, 
-                   'Main Warehouse' as warehouse
+                   COALESCE(l.name, 'Main Warehouse') as warehouse
             FROM products p
             LEFT JOIN inventory i ON p.product_id = i.product_id
+            LEFT JOIN locations l ON i.location_id = l.location_id
         """
         cursor.execute(query)
         return jsonify(cursor.fetchall()), 200
@@ -269,6 +270,66 @@ def get_move_history():
         cursor.execute(query)
         history = cursor.fetchall()
         return jsonify(history), 200
+    finally:
+        conn.close()
+
+# --- INTERNAL STOCK TRANSFER ---
+@app.route('/api/transfer', methods=['POST'])
+def save_transfer():
+    data = request.json
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        
+        # 1. Create the Operation Record
+        query_op = "INSERT INTO Operations (document_type, partner_name, scheduled_date, status) VALUES ('Transfer', 'Internal Move', CURDATE(), 'Done')"
+        cursor.execute(query_op)
+        op_id = cursor.lastrowid
+        
+        source_loc = data['source_location']
+        dest_loc = data['dest_location']
+
+        for item in data['products']:
+            product_id = item['product_id']
+            qty = int(item['qty'])
+
+            # 2. Subtract from Source Warehouse
+            cursor.execute("""
+                UPDATE inventory SET quantity = quantity - %s 
+                WHERE product_id = %s AND location_id = %s
+            """, (qty, product_id, source_loc))
+
+            # 3. Add to Destination Warehouse
+            # First, check if the product already has a row in the destination warehouse
+            cursor.execute("SELECT * FROM inventory WHERE product_id = %s AND location_id = %s", (product_id, dest_loc))
+            exists = cursor.fetchone()
+
+            if exists:
+                cursor.execute("""
+                    UPDATE inventory SET quantity = quantity + %s 
+                    WHERE product_id = %s AND location_id = %s
+                """, (qty, product_id, dest_loc))
+            else:
+                cursor.execute("""
+                    INSERT INTO inventory (product_id, location_id, quantity) 
+                    VALUES (%s, %s, %s)
+                """, (product_id, dest_loc, qty))
+
+            # 4. Log in the Stock Ledger (Both locations filled!)
+            cursor.execute("""
+                INSERT INTO stock_ledger (product_id, operation_id, quantity_moved, from_location_id, to_location_id)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (product_id, op_id, qty, source_loc, dest_loc))
+            
+            # 5. Link to operation_items
+            cursor.execute("INSERT INTO operation_items (operation_id, product_id, quantity) VALUES (%s, %s, %s)", 
+                           (op_id, product_id, qty))
+
+        conn.commit()
+        return jsonify({"message": "Transfer successful!"}), 201
+    except Exception as e:
+        print(f"Transfer Error: {e}")
+        return jsonify({"error": str(e)}), 500
     finally:
         conn.close()
 if __name__ == '__main__':
