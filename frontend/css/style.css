@@ -1,0 +1,238 @@
+/* Base Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #0b0c10; /* Deep dark background */
+    color: #c5c6c7;
+}
+
+.dashboard-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Sidebar Styling */
+.sidebar {
+    width: 260px;
+    background-color: #12141a;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.4);
+    z-index: 10;
+}
+
+.logo {
+    font-size: 1.4rem;
+    font-weight: 800;
+    padding: 30px 20px;
+    text-align: center;
+    color: #ffffff;
+    letter-spacing: 2px;
+}
+
+.logo-accent {
+    color: #45a29e; /* Cyan accent */
+}
+
+.nav-menu {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 0;
+}
+
+.nav-item {
+    color: #8b92a5;
+    text-decoration: none;
+    padding: 18px 30px;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+}
+
+.nav-item:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+    color: #ffffff;
+}
+
+.nav-item.active {
+    background-color: rgba(69, 162, 158, 0.1);
+    color: #66fcf1;
+    border-left: 4px solid #66fcf1;
+    box-shadow: inset 10px 0 20px -10px rgba(102, 252, 241, 0.3);
+}
+
+/* Main Content Styling */
+.main-content {
+    flex: 1;
+    padding: 40px 50px;
+    display: flex;
+    flex-direction: column;
+    gap: 35px;
+    background: radial-gradient(circle at top right, #1a1e29 0%, #0b0c10 60%);
+}
+
+.top-header h1 {
+    font-size: 2.2rem;
+    color: #ffffff;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Dashboard Widgets / Cards */
+.widgets-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 30px;
+}
+
+.card {
+    background: rgba(31, 35, 46, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.card h2 {
+    font-size: 1.3rem;
+    color: #ffffff;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-weight: 500;
+    letter-spacing: 1px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    text-align: center;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+}
+
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 800;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: #8b92a5;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+/* Neon Glow Color Classes */
+.neon-red { 
+    color: #ff4757; 
+    text-shadow: 0 0 15px rgba(255, 71, 87, 0.4);
+}
+.neon-blue { 
+    color: #1e90ff; 
+    text-shadow: 0 0 15px rgba(30, 144, 255, 0.4);
+}
+.neon-green { 
+    color: #2ed573; 
+    text-shadow: 0 0 15px rgba(46, 213, 115, 0.4);
+}
+.neon-orange { 
+    color: #ffa502; 
+    text-shadow: 0 0 15px rgba(255, 165, 2, 0.4);
+}
+/* --- NEW ADDITIONS FOR SUBMENU & CLICKABLE CARDS --- */
+
+/* Submenu Styling */
+.nav-item-group {
+    display: flex;
+    flex-direction: column;
+}
+
+#operations-toggle {
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.arrow {
+    font-size: 0.7rem;
+    transition: transform 0.3s ease;
+}
+
+.sub-menu {
+    display: none; /* Hidden by default */
+    flex-direction: column;
+    background-color: rgba(0, 0, 0, 0.25);
+    border-left: 2px solid #1a1e29;
+}
+
+.sub-menu.show {
+    display: flex; /* Shown when JavaScript adds the 'show' class */
+}
+
+.sub-nav-item {
+    color: #6c7587;
+    text-decoration: none;
+    padding: 14px 30px 14px 50px; /* Indented further right */
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.sub-nav-item:hover {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.03);
+    border-left: 2px solid #45a29e;
+    margin-left: -2px; /* Offsets the border so text doesn't shift */
+}
+
+/* Clickable Cards */
+.clickable-card {
+    cursor: pointer;
+}
+
+/* Slight scale effect to emphasize clickability on top of existing hover */
+.clickable-card:active {
+    transform: translateY(-2px) scale(0.98);
+}
+.stats-grid {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    text-align: center;
+}
+
+.stat-item {
+    flex: 1; /* This forces the items to take up equal width perfectly */
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+}

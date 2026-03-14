@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dark Inventory Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo">INVENTORY<span class="logo-accent">PRO</span></div>
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active">Dashboard</a>
+                
+                <div class="nav-item-group">
+                    <div class="nav-item" id="operations-toggle">
+                        Operations <span class="arrow">▼</span>
+                    </div>
+                    <div class="sub-menu" id="operations-submenu">
+                        <a href="receipts.html" class="sub-nav-item">Receipts</a>
+                        <a href="delivery.html" class="sub-nav-item">Delivery</a>
+                        <a href="adjustment.html" class="sub-nav-item">Adjustment</a>
+                    </div>
+                </div>
+
+                <a href="stock.html" class="nav-item">Stock</a>
+                <a href="move-history.html" class="nav-item">Move History</a>
+                <a href="settings.html" class="nav-item">Settings</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-header">
+                <h1>Overview</h1>
+            </header>
+
+            <div class="widgets-container">
+                <div class="widget card clickable-card" onclick="window.location.href='receipts.html'">
+                <h2>Receipts</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-value neon-red">12</span>
+                        <span class="stat-label">Late</span>
+                    </div>
+
+                    <div class="stat-item">
+                        <span class="stat-value neon-blue">45</span>
+                        <span class="stat-label">In Operations</span>
+                    </div>
+                    <!-- <div class="stat-item">
+                        <span class="stat-value neon-green">8</span>
+                        <span class="stat-label">In Transit</span>
+                    </div> -->
+                </div>
+            </div>
+
+                <div class="widget card clickable-card" onclick="window.location.href='delivery.html'">
+                    <h2>Deliveries</h2>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-value neon-orange">34</span>
+                            <span class="stat-label">Remaining</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value neon-blue">22</span>
+                            <span class="stat-label">In Operations</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value neon-red">5</span>
+                            <span class="stat-label">Late</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.getElementById('operations-toggle').addEventListener('click', function() {
+            const submenu = document.getElementById('operations-submenu');
+            const arrow = this.querySelector('.arrow');
+            
+            // Toggle the visibility class
+            submenu.classList.toggle('show');
+            
+            // Rotate the arrow indicator
+            if (submenu.classList.contains('show')) {
+                arrow.style.transform = 'rotate(180deg)';
+            } else {
+                arrow.style.transform = 'rotate(0deg)';
+            }
+        });
+    </script>
+</body>
+</html>
