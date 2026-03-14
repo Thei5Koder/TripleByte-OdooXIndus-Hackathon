@@ -108,7 +108,7 @@
                         <select id="deliveryStage" class="bg-ready" onchange="updateStageColor(this)">
                             <option value="Ready">Ready</option>
                             <option value="Draft">Draft</option>
-                            <option value="Waiting">Waiting</option>
+                            <option value="Waiting">Remaining</option>
                         </select>
                     </div>
                 </div>
@@ -143,99 +143,8 @@
         </div>
     </div>
 
-    <script>
-        // Dropdown toggle logic
-        document.getElementById('operations-toggle').addEventListener('click', function() {
-            const submenu = document.getElementById('operations-submenu');
-            const arrow = this.querySelector('.arrow');
-            submenu.classList.toggle('show');
-            arrow.style.transform = submenu.classList.contains('show') ? 'rotate(180deg)' : 'rotate(0deg)';
-        });
-
-        // Modal Logic
-        const modal = document.getElementById('deliveryModal');
-
-        function openModal() {
-            modal.classList.add('active');
-            // Auto-generate a dummy reference number using WH/OUT/ prefix
-            const randomId = Math.floor(Math.random() * 9000) + 1000;
-            document.getElementById('refNumber').value = `WH/OUT/${randomId}`;
-        }
-
-        function closeModal() {
-            modal.classList.remove('active');
-        }
-
-        // Add Product Row Logic
-        function addProductRow() {
-            const tbody = document.getElementById('productList');
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td><input type="text" placeholder="Enter product" required></td>
-                <td><input type="number" min="1" placeholder="0" required></td>
-                <td class="no-print"><button type="button" class="btn-icon" onclick="removeProductRow(this)">🗑️</button></td>
-            `;
-            tbody.appendChild(row);
-        }
-
-        function removeProductRow(btn) {
-            btn.closest('tr').remove();
-        }
-
-        // Stage Dropdown Color Logic
-        function updateStageColor(selectElement) {
-            selectElement.classList.remove('bg-ready', 'bg-draft', 'bg-waiting');
-            if (selectElement.value === 'Ready') selectElement.classList.add('bg-ready');
-            if (selectElement.value === 'Draft') selectElement.classList.add('bg-draft');
-            if (selectElement.value === 'Waiting') selectElement.classList.add('bg-waiting');
-        }
-
-        // Save Delivery Logic
-        function saveDelivery(event) {
-            event.preventDefault();
-
-            const ref = document.getElementById('refNumber').value;
-            const customer = document.getElementById('customerName').value;
-            const contact = document.getElementById('customerContact').value;
-            const date = document.getElementById('scheduleDate').value;
-            const stage = document.getElementById('deliveryStage').value; 
-            
-            // Hardcoding origin warehouse since it's not in the modal form
-            const origin = "Main Warehouse"; 
-
-            // Determine badge class
-            let badgeClass = '';
-            if (stage === 'Ready') badgeClass = 'status-ready';
-            if (stage === 'Draft') badgeClass = 'status-draft';
-            if (stage === 'Waiting') badgeClass = 'status-waiting';
-
-            const tbody = document.querySelector('.data-table tbody');
-            const newRow = document.createElement('tr');
-            
-            newRow.innerHTML = `
-                <td>${ref}</td>
-                <td>${customer}</td>
-                <td>${origin}</td>
-                <td>${contact}</td> 
-                <td>${date}</td>
-                <td><span class="status-badge ${badgeClass}">${stage}</span></td>
-            `;
-            
-            tbody.insertBefore(newRow, tbody.firstChild);
-            
-            document.getElementById('newDeliveryForm').reset();
-            updateStageColor(document.getElementById('deliveryStage'));
-            
-            document.getElementById('productList').innerHTML = `
-                <tr>
-                    <td><input type="text" placeholder="Enter product" required></td>
-                    <td><input type="number" min="1" placeholder="0" required></td>
-                    <td class="no-print"><button type="button" class="btn-icon" disabled>🗑️</button></td>
-                </tr>
-            `;
-            
-            closeModal();
-        }
+    <script src="js/delivery.js">
+        
     </script>
 </body>
 </html>
