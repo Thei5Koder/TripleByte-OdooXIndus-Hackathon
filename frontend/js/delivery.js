@@ -93,6 +93,11 @@ async function loadDeliveries() {
     tbody.innerHTML = ''; 
 
     data.forEach(op => {
+        // Show Validate button if not Done
+        let actionBtn = op.status !== 'Done' ? 
+            `<button class="btn btn-primary" style="padding: 5px 10px; font-size: 0.8rem;" onclick="validateDelivery(${op.operation_id})">Validate</button>` : 
+            `<span style="color: #45a29e; font-weight: bold;">✓ Shipped</span>`;
+
         tbody.innerHTML += `
             <tr>
                 <td>WH/OUT/${op.operation_id}</td>
@@ -101,8 +106,29 @@ async function loadDeliveries() {
                 <td>${op.status}</td>
                 <td>${op.scheduled_date}</td>
                 <td><span class="status-badge status-${op.status.toLowerCase()}">${op.status}</span></td>
-            </tr>
+                <td>${actionBtn}</td> </tr>
         `;
     });
 }
+
+// Function to trigger the Stock Subtraction in Python
+async function validateDelivery(id) {
+    if(!confirm("Validate this delivery? This will deduct the items from your warehouse stock.")) return;
+
+    try {
+        const res = await fetch(`http://127.0.0.1:5000/api/operations/${id}/validate`, {
+            method: 'PUT'
+        });
+
+        if (res.ok) {
+            alert("Stock deducted successfully!");
+            location.reload(); 
+        } else {
+            alert("Error validating delivery.");
+        }
+    } catch (err) {
+        console.error("Validation failed:", err);
+    }
+}
+
 window.onload = loadDeliveries;

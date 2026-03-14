@@ -93,31 +93,50 @@ def add_product():
 @app.route('/api/receipts', methods=['POST'])
 def save_full_receipt():
     data = request.json
+    print(f"DEBUG DATA RECEIVED: {data}") # Check your terminal to see if 'category' is here
+    
     conn = get_db_connection()
     try:
-        cursor = conn.cursor()
-        # 1. Insert into Operations table 
-        query_op = """
-            INSERT INTO Operations (document_type, partner_name, scheduled_date, status) 
-            VALUES ('Receipt', %s, %s, %s)
-        """
-        cursor.execute(query_op, (data['vendor'], data['date'], data['status']))
-        operation_id = cursor.lastrowid
+        cursor = conn.cursor(dictionary=True)
+        
+        # 1. Save Receipt Header
+        query_op = "INSERT INTO Operations (document_type, partner_name, scheduled_date, status) VALUES ('Receipt', %s, %s, %s)"
+        cursor.execute(query_op, (data.get('vendor'), data.get('date'), data.get('status')))
+        op_id = cursor.lastrowid
 
-        # 2. Insert into operation_items (Mapping products to this receipt) [cite: 54-55]
-        for item in data['products']:
-            # Find product_id by name first (simplified for hackathon)
-            cursor.execute("SELECT product_id FROM products WHERE name = %s", (item['name'],))
-            prod = cursor.fetchone()
-            if prod:
-                query_item = "INSERT INTO operation_items (operation_id, product_id, quantity) VALUES (%s, %s, %s)"
-                cursor.execute(query_item, (operation_id, prod[0], item['qty']))
+        for item in data.get('products', []):
+            # 1. Clean the input (remove accidental spaces)
+            clean_name = item['name'].strip()
+            
+            # 2. Search case-insensitively using LOWER()
+            cursor.execute("SELECT product_id FROM products WHERE LOWER(name) = LOWER(%s)", (clean_name,))
+            existing_product = cursor.fetchone()
+
+            if existing_product:
+                product_id = existing_product['product_id']
+            else:
+                # Create NEW product if it truly doesn't exist
+                category = item.get('category', 'General')
+                sku = f"SKU-{clean_name[:3].upper()}-{op_id}"
+                
+                query_prod = "INSERT INTO products (name, category, sku, unit_of_measure) VALUES (%s, %s, %s, %s)"
+                cursor.execute(query_prod, (clean_name, category, sku, 'Units'))
+                product_id = cursor.lastrowid
+                
+                # Initialize inventory at 0
+                cursor.execute("INSERT INTO inventory (product_id, location_id, quantity) VALUES (%s, 1, 0)", (product_id,))
+
+            # 3. Link to Operation using the confirmed product_id
+            cursor.execute(
+                "INSERT INTO operation_items (operation_id, product_id, quantity) VALUES (%s, %s, %s)",
+                (op_id, product_id, item['qty'])
+            )
 
         conn.commit()
-        return jsonify({"message": "Receipt draft saved!", "id": operation_id}), 201
+        return jsonify({"message": "Success"}), 201
     except Exception as e:
-        print(f"DEBUG ERROR: {e}")
-        return jsonify({"error": str(e)}), 400
+        print(f"CRITICAL ERROR: {e}")
+        return jsonify({"error": str(e)}), 500
     finally:
         conn.close()
 
@@ -127,28 +146,46 @@ def validate_operation(op_id):
     conn = get_db_connection()
     try:
         cursor = conn.cursor(dictionary=True)
-        # 1. Get the items in this operation [cite: 54-55]
+        
+        # 1. Identify Document Type
+        cursor.execute("SELECT document_type FROM Operations WHERE operation_id = %s", (op_id,))
+        op_type = cursor.fetchone()['document_type']
+
+        # 2. Get the items
         cursor.execute("SELECT product_id, quantity FROM operation_items WHERE operation_id = %s", (op_id,))
         items = cursor.fetchall()
         
-        # 2. Update status to 'Done' [cite: 22, 56]
+        # 3. Mark as 'Done'
         cursor.execute("UPDATE Operations SET status = 'Done' WHERE operation_id = %s", (op_id,))
         
         for item in items:
-            # 3. Increase Stock in Inventory table 
+            # Set math & locations based on your specific ledger design
+            if op_type == 'Receipt':
+                math_modifier = item['quantity']
+                from_loc = None  # Coming from outside vendor
+                to_loc = 1       # Going to Main Warehouse
+            else: # Delivery
+                math_modifier = -item['quantity']
+                from_loc = 1     # Coming from Main Warehouse
+                to_loc = None    # Going to outside customer
+            
+            # Update physical stock in inventory table
             cursor.execute("""
                 UPDATE inventory SET quantity = quantity + %s 
-                WHERE product_id = %s
-            """, (item['quantity'], item['product_id']))
+                WHERE product_id = %s AND location_id = 1
+            """, (math_modifier, item['product_id']))
             
-            # 4. Log the movement in the Stock Ledger 
+            # 4. Log in the Stock Ledger using YOUR exact columns!
             cursor.execute("""
-                INSERT INTO stock_ledger (product_id, operation_id, quantity_change, transaction_type)
-                VALUES (%s, %s, %s, 'Receipt')
-            """, (item['product_id'], op_id, item['quantity']))
+                INSERT INTO stock_ledger (product_id, operation_id, quantity_moved, from_location_id, to_location_id)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (item['product_id'], op_id, item['quantity'], from_loc, to_loc))
 
         conn.commit()
-        return jsonify({"message": "Stock updated successfully!"}), 200
+        return jsonify({"message": f"{op_type} validated successfully!"}), 200
+    except Exception as e:
+        print(f"ERROR: {e}")
+        return jsonify({"error": str(e)}), 500
     finally:
         conn.close()
 @app.route('/api/receipts', methods=['GET'])
@@ -175,8 +212,12 @@ def save_delivery():
         
         # Save product items to link them [cite: 62-63]
         for item in data['products']:
-            cursor.execute("SELECT product_id FROM products WHERE name = %s", (item['name'],))
+            clean_name = item['name'].strip() # Remove invisible spaces
+            
+            # Match case-insensitively!
+            cursor.execute("SELECT product_id FROM products WHERE LOWER(name) = LOWER(%s)", (clean_name,))
             prod = cursor.fetchone()
+            
             if prod:
                 cursor.execute("INSERT INTO operation_items (operation_id, product_id, quantity) VALUES (%s, %s, %s)", 
                                (op_id, prod[0], item['qty']))
@@ -195,5 +236,101 @@ def get_deliveries():
     results = cursor.fetchall()
     conn.close()
     return jsonify(results)
+@app.route('/api/product-inventory', methods=['GET'])
+def get_product_inventory():
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        # Added p.product_id and a JOIN to the locations table!
+        query = """
+            SELECT p.product_id, p.name, p.category, p.sku, 
+                   COALESCE(i.quantity, 0) as quantity, 
+                   COALESCE(l.name, 'Main Warehouse') as warehouse
+            FROM products p
+            LEFT JOIN inventory i ON p.product_id = i.product_id
+            LEFT JOIN locations l ON i.location_id = l.location_id
+        """
+        cursor.execute(query)
+        return jsonify(cursor.fetchall()), 200
+    finally:
+        conn.close()
+@app.route('/api/move-history', methods=['GET'])
+def get_move_history():
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor(dictionary=True)
+        # Fetch ledger entries using your actual columns
+        query = """
+            SELECT sl.ledger_id, p.name as product_name, sl.quantity_moved, 
+                   sl.from_location_id, sl.to_location_id, sl.timestamp, sl.operation_id
+            FROM stock_ledger sl
+            JOIN products p ON sl.product_id = p.product_id
+            ORDER BY sl.timestamp DESC
+        """
+        cursor.execute(query)
+        history = cursor.fetchall()
+        return jsonify(history), 200
+    finally:
+        conn.close()
+
+# --- INTERNAL STOCK TRANSFER ---
+@app.route('/api/transfer', methods=['POST'])
+def save_transfer():
+    data = request.json
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        
+        # 1. Create the Operation Record
+        query_op = "INSERT INTO Operations (document_type, partner_name, scheduled_date, status) VALUES ('Transfer', 'Internal Move', CURDATE(), 'Done')"
+        cursor.execute(query_op)
+        op_id = cursor.lastrowid
+        
+        source_loc = data['source_location']
+        dest_loc = data['dest_location']
+
+        for item in data['products']:
+            product_id = item['product_id']
+            qty = int(item['qty'])
+
+            # 2. Subtract from Source Warehouse
+            cursor.execute("""
+                UPDATE inventory SET quantity = quantity - %s 
+                WHERE product_id = %s AND location_id = %s
+            """, (qty, product_id, source_loc))
+
+            # 3. Add to Destination Warehouse
+            # First, check if the product already has a row in the destination warehouse
+            cursor.execute("SELECT * FROM inventory WHERE product_id = %s AND location_id = %s", (product_id, dest_loc))
+            exists = cursor.fetchone()
+
+            if exists:
+                cursor.execute("""
+                    UPDATE inventory SET quantity = quantity + %s 
+                    WHERE product_id = %s AND location_id = %s
+                """, (qty, product_id, dest_loc))
+            else:
+                cursor.execute("""
+                    INSERT INTO inventory (product_id, location_id, quantity) 
+                    VALUES (%s, %s, %s)
+                """, (product_id, dest_loc, qty))
+
+            # 4. Log in the Stock Ledger (Both locations filled!)
+            cursor.execute("""
+                INSERT INTO stock_ledger (product_id, operation_id, quantity_moved, from_location_id, to_location_id)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (product_id, op_id, qty, source_loc, dest_loc))
+            
+            # 5. Link to operation_items
+            cursor.execute("INSERT INTO operation_items (operation_id, product_id, quantity) VALUES (%s, %s, %s)", 
+                           (op_id, product_id, qty))
+
+        conn.commit()
+        return jsonify({"message": "Transfer successful!"}), 201
+    except Exception as e:
+        print(f"Transfer Error: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
