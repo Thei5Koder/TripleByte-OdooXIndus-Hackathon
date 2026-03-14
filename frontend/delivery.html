@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deliveries - InventoryPro</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo">INVENTORY<span class="logo-accent">PRO</span></div>
+            <nav class="nav-menu">
+                <a href="index.html" class="nav-item">Dashboard</a>
+                
+                <div class="nav-item-group">
+                    <div class="nav-item active" id="operations-toggle">
+                        Operations <span class="arrow" style="transform: rotate(180deg);">▼</span>
+                    </div>
+                    <div class="sub-menu show" id="operations-submenu">
+                        <a href="receipts.html" class="sub-nav-item">Receipts</a>
+                        <a href="delivery.html" class="sub-nav-item active-sub">Delivery</a>
+                        <a href="adjustment.html" class="sub-nav-item">Adjustment</a>
+                    </div>
+                </div>
+
+                <a href="stock.html" class="nav-item">Stock</a>
+                <a href="move-history.html" class="nav-item">Move History</a>
+                <a href="settings.html" class="nav-item">Settings</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-header page-header">
+                <h1>Deliveries</h1>
+                <button class="btn btn-primary" onclick="openModal()">+ New Delivery</button>
+            </header>
+
+            <div class="card table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Reference</th>
+                            <th>To (Customer)</th>
+                            <th>From (Warehouse)</th>
+                            <th>Contact</th>
+                            <th>Schedule Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>WH/OUT/4092</td>
+                            <td>Acme Corp</td>
+                            <td>Main Warehouse</td>
+                            <td>logistics@acmecorp.com</td>
+                            <td>2026-03-16</td>
+                            <td><span class="status-badge status-waiting">Waiting</span></td>
+                        </tr>
+                        <tr>
+                            <td>WH/OUT/4093</td>
+                            <td>Stark Industries</td>
+                            <td>Zone B Storage</td>
+                            <td>receiving@stark.com</td>
+                            <td>2026-03-18</td>
+                            <td><span class="status-badge status-ready">Ready</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <div id="deliveryModal" class="modal-overlay">
+        <div class="modal-content card">
+            <header class="modal-header">
+                <h2>Create New Delivery</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </header>
+            
+            <form id="newDeliveryForm" onsubmit="saveDelivery(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Reference (Auto-generated)</label>
+                        <input type="text" id="refNumber" readonly class="input-readonly">
+                    </div>
+                    <div class="form-group">
+                        <label>Deliver To (Customer)</label>
+                        <input type="text" id="customerName" placeholder="Enter customer name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Contact (Email/Phone)</label>
+                        <input type="text" id="customerContact" placeholder="Enter contact info" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Schedule Date</label>
+                        <input type="date" id="scheduleDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Stage</label>
+                        <select id="deliveryStage" class="bg-ready" onchange="updateStageColor(this)">
+                            <option value="Ready">Ready</option>
+                            <option value="Draft">Draft</option>
+                            <option value="Waiting">Waiting</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="products-section">
+                    <h3>Products to Deliver</h3>
+                    <table class="data-table nested-table" id="productsTable">
+                        <thead>
+                            <tr>
+                                <th>Product Name</th>
+                                <th>Quantity</th>
+                                <th class="no-print">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productList">
+                            <tr>
+                                <td><input type="text" placeholder="Enter product" required></td>
+                                <td><input type="number" min="1" placeholder="0" required></td>
+                                <td class="no-print"><button type="button" class="btn-icon" disabled>🗑️</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <button type="button" class="btn btn-secondary no-print" onclick="addProductRow()">+ Add New Product</button>
+                </div>
+
+                <footer class="modal-footer no-print">
+                    <button type="button" class="btn btn-secondary" onclick="window.print()">🖨️ Print</button>
+                    <button type="button" class="btn btn-text" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Delivery</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Dropdown toggle logic
+        document.getElementById('operations-toggle').addEventListener('click', function() {
+            const submenu = document.getElementById('operations-submenu');
+            const arrow = this.querySelector('.arrow');
+            submenu.classList.toggle('show');
+            arrow.style.transform = submenu.classList.contains('show') ? 'rotate(180deg)' : 'rotate(0deg)';
+        });
+
+        // Modal Logic
+        const modal = document.getElementById('deliveryModal');
+
+        function openModal() {
+            modal.classList.add('active');
+            // Auto-generate a dummy reference number using WH/OUT/ prefix
+            const randomId = Math.floor(Math.random() * 9000) + 1000;
+            document.getElementById('refNumber').value = `WH/OUT/${randomId}`;
+        }
+
+        function closeModal() {
+            modal.classList.remove('active');
+        }
+
+        // Add Product Row Logic
+        function addProductRow() {
+            const tbody = document.getElementById('productList');
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><input type="text" placeholder="Enter product" required></td>
+                <td><input type="number" min="1" placeholder="0" required></td>
+                <td class="no-print"><button type="button" class="btn-icon" onclick="removeProductRow(this)">🗑️</button></td>
+            `;
+            tbody.appendChild(row);
+        }
+
+        function removeProductRow(btn) {
+            btn.closest('tr').remove();
+        }
+
+        // Stage Dropdown Color Logic
+        function updateStageColor(selectElement) {
+            selectElement.classList.remove('bg-ready', 'bg-draft', 'bg-waiting');
+            if (selectElement.value === 'Ready') selectElement.classList.add('bg-ready');
+            if (selectElement.value === 'Draft') selectElement.classList.add('bg-draft');
+            if (selectElement.value === 'Waiting') selectElement.classList.add('bg-waiting');
+        }
+
+        // Save Delivery Logic
+        function saveDelivery(event) {
+            event.preventDefault();
+
+            const ref = document.getElementById('refNumber').value;
+            const customer = document.getElementById('customerName').value;
+            const contact = document.getElementById('customerContact').value;
+            const date = document.getElementById('scheduleDate').value;
+            const stage = document.getElementById('deliveryStage').value; 
+            
+            // Hardcoding origin warehouse since it's not in the modal form
+            const origin = "Main Warehouse"; 
+
+            // Determine badge class
+            let badgeClass = '';
+            if (stage === 'Ready') badgeClass = 'status-ready';
+            if (stage === 'Draft') badgeClass = 'status-draft';
+            if (stage === 'Waiting') badgeClass = 'status-waiting';
+
+            const tbody = document.querySelector('.data-table tbody');
+            const newRow = document.createElement('tr');
+            
+            newRow.innerHTML = `
+                <td>${ref}</td>
+                <td>${customer}</td>
+                <td>${origin}</td>
+                <td>${contact}</td> 
+                <td>${date}</td>
+                <td><span class="status-badge ${badgeClass}">${stage}</span></td>
+            `;
+            
+            tbody.insertBefore(newRow, tbody.firstChild);
+            
+            document.getElementById('newDeliveryForm').reset();
+            updateStageColor(document.getElementById('deliveryStage'));
+            
+            document.getElementById('productList').innerHTML = `
+                <tr>
+                    <td><input type="text" placeholder="Enter product" required></td>
+                    <td><input type="number" min="1" placeholder="0" required></td>
+                    <td class="no-print"><button type="button" class="btn-icon" disabled>🗑️</button></td>
+                </tr>
+            `;
+            
+            closeModal();
+        }
+    </script>
+</body>
+</html>
