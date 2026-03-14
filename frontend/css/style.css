@@ -664,3 +664,33 @@ select option {
     text-transform: uppercase;
     font-weight: 600;
 }
+/* --- ADJUSTMENT PAGE SPECIFIC --- */
+.row-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #45a29e; /* Makes the tick mark match your cyan theme */
+}
+
+.inline-input {
+    width: 80px !important;
+    padding: 6px 10px !important;
+    background-color: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #ffffff;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.inline-input:focus {
+    border-color: #45a29e;
+    outline: none;
+}
+
+.inline-input:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    background-color: transparent;
+    border-color: transparent;
+}
